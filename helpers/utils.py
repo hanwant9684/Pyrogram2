@@ -77,7 +77,6 @@ async def has_video_stream(video_path):
         try:
             stdout, stderr = await wait_for(proc.communicate(), timeout=10.0)
         except asyncio.TimeoutError:
-            LOGGER(__name__).debug(f"ffprobe timeout checking {os.path.basename(video_path)}")
             if proc:
                 try:
                     proc.kill()
@@ -91,7 +90,7 @@ async def has_video_stream(video_path):
         
         if proc.returncode != 0 or not stdout_str:
             if stderr_str:
-                LOGGER(__name__).debug(f"ffprobe error for {os.path.basename(video_path)}: {stderr_str[:100]}")
+                pass
             return False, None, stderr_str or "No video stream found"
         
         parts = stdout_str.split(',')
@@ -105,7 +104,6 @@ async def has_video_stream(video_path):
             return True, duration, None
         return False, None, "No video stream detected"
     except Exception as e:
-        LOGGER(__name__).debug(f"has_video_stream exception: {e}")
         if proc and proc.returncode is None:
             try:
                 proc.kill()
@@ -143,7 +141,7 @@ async def generate_thumbnail(video_path, thumb_path=None, duration=None):
     try:
         file_size = os.path.getsize(video_path)
     except Exception as e:
-        LOGGER(__name__).debug(f"Could not determine file size: {e}")
+        pass
     
     base_timeout = 10.0
     if file_size > 100 * 1024 * 1024:
@@ -191,13 +189,12 @@ async def generate_thumbnail(video_path, thumb_path=None, duration=None):
             try:
                 stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=strategy["timeout"])
             except asyncio.TimeoutError:
-                LOGGER(__name__).debug(f"Thumbnail '{strategy['name']}' timed out ({strategy['timeout']}s)")
                 if proc:
                     try:
                         proc.kill()
                         await asyncio.wait_for(proc.wait(), timeout=3.0)
                     except Exception as kill_err:
-                        LOGGER(__name__).debug(f"Error killing process: {kill_err}")
+                        pass
                 continue
             
             if proc.returncode == 0:
@@ -205,7 +202,6 @@ async def generate_thumbnail(video_path, thumb_path=None, duration=None):
                     if os.path.exists(thumb_path):
                         thumb_size = os.path.getsize(thumb_path)
                         if thumb_size > 0:
-                            LOGGER(__name__).debug(f"Thumbnail generated: {strategy['name']}")
                             return thumb_path
                         else:
                             try:
@@ -213,14 +209,12 @@ async def generate_thumbnail(video_path, thumb_path=None, duration=None):
                             except:
                                 pass
                 except OSError as e:
-                    LOGGER(__name__).debug(f"File check error: {e}")
+                    pass
             else:
                 stderr_str = stderr.decode().strip() if stderr else ""
                 if stderr_str and len(stderr_str) > 0:
-                    LOGGER(__name__).debug(f"Strategy '{strategy['name']}' failed: {stderr_str[:100]}")
-                    
+                    pass
         except Exception as e:
-            LOGGER(__name__).debug(f"Strategy '{strategy['name']}' error: {type(e).__name__}: {str(e)[:100]}")
             if proc:
                 try:
                     if proc.returncode is None:
@@ -234,7 +228,7 @@ async def generate_thumbnail(video_path, thumb_path=None, duration=None):
                     proc.kill()
                     await asyncio.wait_for(proc.wait(), timeout=2.0)
                 except Exception as cleanup_err:
-                    LOGGER(__name__).debug(f"Process cleanup error: {cleanup_err}")
+                    pass
                 finally:
                     proc = None
     
@@ -254,7 +248,6 @@ async def get_media_info(path):
             "-print_format", "json", "-show_format", "-show_streams", path,
         ])
     except Exception as e:
-        print(f"Get Media Info: {e}. Mostly File not found! - File: {path}")
         return 0, None, None
     
     if result[0] and result[2] == 0:
@@ -334,13 +327,14 @@ class ProgressThrottle:
             del self.message_throttles[key]
         
         if stale_keys:
-            LOGGER(__name__).debug(f"Cleaned up {len(stale_keys)} stale progress throttle entries")
+            pass
     
     def should_update(self, message_id, current, total, now):
         """
         Determine if progress should be updated based on throttle rules.
         
         Rules:
+            pass
         - Minimum 5 seconds between updates (or 10% progress change)
         - If rate limited, exponential backoff up to 60 seconds
         - Always allow 100% completion
@@ -502,7 +496,7 @@ async def safe_progress_callback(current, total, *args):
             LOGGER(__name__).warning(f"Rate limited by Telegram API - backing off")
         # Silently ignore errors related to deleted or invalid messages
         elif any(err in error_str for err in ['message_id_invalid', 'message not found', 'message to edit not found', 'message can\'t be edited']):
-            LOGGER(__name__).debug(f"Progress message was deleted or invalid, ignoring: {e}")
+            pass
         else:
             # Log other errors but don't raise to avoid interrupting downloads
             LOGGER(__name__).warning(f"Progress callback error: {e}")
@@ -524,7 +518,6 @@ async def forward_to_dump_channel(bot, sent_message, user_id, caption=None, sour
     
     # Only send if dump channel is configured
     if not PyroConf.DUMP_CHANNEL_ID:
-        LOGGER(__name__).debug("Dump channel not configured, skipping forward")
         return
     
     try:
@@ -543,7 +536,6 @@ async def forward_to_dump_channel(bot, sent_message, user_id, caption=None, sour
         if caption:
             dump_caption += f"\n\n{caption}"
         
-        LOGGER(__name__).debug(f"[DUMP_CHANNEL] Copying message {sent_message.id} to channel {channel_id} with caption")
         
         # Use copy_message to avoid "forwarded from" tag, with new caption containing tracking info
         try:
@@ -587,7 +579,6 @@ async def send_media(
     memory_monitor.log_memory_snapshot("Upload Start", f"User {user_id or 'unknown'}: {os.path.basename(media_path)} ({media_type})", silent=True)
     
     progress_args = progressArgs("📤 Uploading", progress_message, start_time)
-    LOGGER(__name__).debug(f"Uploading media: {media_path} ({media_type})")
 
     # Create sync upload progress callback with throttling
     last_update = {"time": time(), "percent": 0}
@@ -796,6 +787,110 @@ async def send_media(
         
         memory_monitor.log_memory_snapshot("Upload Complete", f"User {user_id or 'unknown'}: {os.path.basename(media_path)} (document)", silent=True)
         return True
+    elif media_type == "voice":
+        from helpers.transfer import upload_media_fast
+        duration, _, _ = await get_media_info(media_path)
+        
+        fast_file = await upload_media_fast(bot, media_path, progress_callback=None)
+        sent_message = None
+        if fast_file:
+            sent_message = await bot.send_voice(
+                message.chat.id,
+                voice=fast_file,
+                duration=duration if duration and duration > 0 else None,
+                caption=caption or "",
+                progress=create_upload_progress_callback()
+            )
+        else:
+            sent_message = await bot.send_voice(
+                message.chat.id,
+                voice=media_path,
+                duration=duration if duration and duration > 0 else None,
+                caption=caption or "",
+                progress=create_upload_progress_callback()
+            )
+        
+        if user_id and sent_message:
+            await forward_to_dump_channel(bot, sent_message, user_id, caption, source_url)
+        
+        memory_monitor.log_memory_snapshot("Upload Complete", f"User {user_id or 'unknown'}: {os.path.basename(media_path)} (voice)", silent=True)
+        return True
+    elif media_type == "video_note":
+        duration, _, _ = await get_media_info(media_path)
+        
+        from helpers.transfer import upload_media_fast
+        fast_file = await upload_media_fast(bot, media_path, progress_callback=None)
+        sent_message = None
+        if fast_file:
+            sent_message = await bot.send_video_note(
+                message.chat.id,
+                video_note=fast_file,
+                duration=duration if duration and duration > 0 else None,
+                progress=create_upload_progress_callback()
+            )
+        else:
+            sent_message = await bot.send_video_note(
+                message.chat.id,
+                video_note=media_path,
+                duration=duration if duration and duration > 0 else None,
+                progress=create_upload_progress_callback()
+            )
+        
+        if user_id and sent_message:
+            await forward_to_dump_channel(bot, sent_message, user_id, None, source_url)
+        
+        memory_monitor.log_memory_snapshot("Upload Complete", f"User {user_id or 'unknown'}: {os.path.basename(media_path)} (video_note)", silent=True)
+        return True
+    elif media_type == "animation":
+        duration, _, _ = await get_media_info(media_path)
+        
+        from helpers.transfer import upload_media_fast
+        fast_file = await upload_media_fast(bot, media_path, progress_callback=None)
+        sent_message = None
+        if fast_file:
+            sent_message = await bot.send_animation(
+                message.chat.id,
+                animation=fast_file,
+                duration=duration if duration and duration > 0 else None,
+                caption=caption or "",
+                progress=create_upload_progress_callback()
+            )
+        else:
+            sent_message = await bot.send_animation(
+                message.chat.id,
+                animation=media_path,
+                duration=duration if duration and duration > 0 else None,
+                caption=caption or "",
+                progress=create_upload_progress_callback()
+            )
+        
+        if user_id and sent_message:
+            await forward_to_dump_channel(bot, sent_message, user_id, caption, source_url)
+        
+        memory_monitor.log_memory_snapshot("Upload Complete", f"User {user_id or 'unknown'}: {os.path.basename(media_path)} (animation)", silent=True)
+        return True
+    elif media_type == "sticker":
+        from helpers.transfer import upload_media_fast
+        fast_file = await upload_media_fast(bot, media_path, progress_callback=None)
+        sent_message = None
+        if fast_file:
+            sent_message = await bot.send_sticker(
+                message.chat.id,
+                sticker=fast_file,
+                progress=create_upload_progress_callback()
+            )
+        else:
+            sent_message = await bot.send_sticker(
+                message.chat.id,
+                sticker=media_path,
+                progress=create_upload_progress_callback()
+            )
+        
+        if user_id and sent_message:
+            await forward_to_dump_channel(bot, sent_message, user_id, None, source_url)
+        
+        memory_monitor.log_memory_snapshot("Upload Complete", f"User {user_id or 'unknown'}: {os.path.basename(media_path)} (sticker)", silent=True)
+        return True
 
 
 PER_FILE_TIMEOUT_SECONDS = 2700
@@ -863,13 +958,16 @@ async def _process_single_media_file(
     # RAM OPTIMIZATION: Release download buffers before upload starts
     # This ensures peak RAM usage is minimized by clearing download memory before allocating upload buffers
     gc.collect()
-    LOGGER(__name__).debug(f"RAM released after download, before upload: file {idx}/{total_files}")
     
     # Determine media type from msg attributes
     media_type = (
         "photo" if msg.photo
         else "video" if msg.video
         else "audio" if msg.audio
+        else "voice" if msg.voice
+        else "video_note" if msg.video_note
+        else "animation" if msg.animation
+        else "sticker" if msg.sticker
         else "document"
     )
     
@@ -995,7 +1093,7 @@ async def processMediaGroup(chat_message, bot, message, user_id=None, user_clien
             # This prevents closure capture and allows each message to be GC'd after processing
             msg = await client_for_download.get_messages(chat_id, ids=msg_id)
             
-            if not msg or not (msg.media or msg.photo or msg.video or msg.document or msg.audio):
+            if not msg or not (msg.media or msg.photo or msg.video or msg.document or msg.audio or msg.voice or msg.video_note or msg.animation or msg.sticker):
                 LOGGER(__name__).warning(f"File {idx}/{total_files}: No media found in message {msg_id}")
                 continue
             

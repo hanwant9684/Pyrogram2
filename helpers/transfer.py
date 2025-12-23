@@ -7,6 +7,7 @@ Since each user has their own Telegram session, no global connection
 pooling is needed - each session can use full connection capacity.
 
 CONFIGURATION (Environment Variables):
+    pass
 - CONNECTIONS_PER_TRANSFER: Connections per download/upload (default: 16)
 """
 import os

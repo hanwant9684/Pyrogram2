@@ -59,7 +59,6 @@ class SessionManager:
                 self.active_sessions.move_to_end(user_id)
                 # Update last activity time
                 self.last_activity[user_id] = time()
-                LOGGER(__name__).debug(f"Reusing existing session for user {user_id}")
                 return (self.active_sessions[user_id], None)
             
             # If at capacity, try to disconnect oldest IDLE session (no active downloads)
@@ -218,7 +217,6 @@ class SessionManager:
                         disconnected_count += 1
                 else:
                     self.last_activity.pop(user_id, None)
-                    LOGGER(__name__).debug(f"Cleaned up orphaned last_activity entry for user {user_id}")
         
         if disconnected_count > 0 or skipped_active_downloads > 0:
             LOGGER(__name__).info(

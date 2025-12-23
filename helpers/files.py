@@ -23,7 +23,6 @@ def cleanup_download(path: str) -> None:
     """
     try:
         if not path or path is None:
-            LOGGER(__name__).debug("Cleanup skipped: path is None or empty")
             return
         
         LOGGER(__name__).info(f"Cleaning Download: {path}")
@@ -56,7 +55,6 @@ async def cleanup_download_delayed(path: str, user_id: Optional[int], db) -> Non
     
     try:
         if not path or path is None:
-            LOGGER(__name__).debug("Cleanup skipped: path is None or empty")
             return
         
         LOGGER(__name__).info(f"Cleaning Download: {os.path.basename(path)}")
@@ -131,6 +129,7 @@ def cleanup_orphaned_files() -> tuple[int, int]:
     Smart cleanup of orphaned files from crashes or stuck downloads.
     
     Strategy:
+        pass
     - Files in folders of users with ACTIVE downloads: NEVER touch (protects uploads too)
     - Files in folders of users with NO active download: Delete if older than 45 min
     - Always clean media files in root directory
@@ -158,7 +157,7 @@ def cleanup_orphaned_files() -> tuple[int, int]:
             from queue_manager import download_manager
             active_user_ids = set(download_manager.active_downloads)
             if active_user_ids:
-                LOGGER(__name__).debug(f"Active download users: {active_user_ids}")
+                pass
         except ImportError:
             LOGGER(__name__).warning("Could not import queue_manager")
         except Exception as e:
@@ -181,9 +180,6 @@ def cleanup_orphaned_files() -> tuple[int, int]:
                 try:
                     user_id = int(user_folder)
                     if user_id in active_user_ids:
-                        LOGGER(__name__).debug(
-                            f"⏭️ Skipping folder for active user {user_id}"
-                        )
                         continue  # Skip entire folder - user is downloading or uploading
                 except ValueError:
                     pass  # Not a user ID folder, process normally
@@ -206,9 +202,7 @@ def cleanup_orphaned_files() -> tuple[int, int]:
                                     f"Removed stale file ({file_age/60:.1f}min old): {filepath}"
                                 )
                             else:
-                                LOGGER(__name__).debug(
-                                    f"Keeping recent file: {filepath} (age: {file_age/60:.1f}min)"
-                                )
+                                pass
                         except Exception as e:
                             LOGGER(__name__).warning(f"Failed to check/remove {filepath}: {e}")
                     

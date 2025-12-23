@@ -34,9 +34,7 @@ def getChatMsgID(link: str) -> Tuple[Union[int, str], int]:
         ValueError: If link is invalid
     """
     from logger import LOGGER
-    LOGGER(__name__).debug(f"[URL_PARSE] Parsing URL: {link}")
     chat_id, thread_id, message_id = parse_message_link(link)
-    LOGGER(__name__).debug(f"[URL_PARSE] Parsed - Chat: {chat_id}, Thread: {thread_id}, Message: {message_id}")
     
     if not chat_id or not message_id:
         LOGGER(__name__).warning(f"[URL_PARSE] Invalid URL format: {link}")
