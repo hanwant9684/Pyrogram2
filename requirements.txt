@@ -13,3 +13,11 @@ waitress
 
 # Performance
 orjson
+cryptg
+flask
+orjson
+psutil
+pyrogram
+tgcrypto
+uvloop
+waitress

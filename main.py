@@ -361,6 +361,7 @@ async def handle_download(bot: Client, message: Message, post_url: str, user_cli
         chat_message = await client_to_use.get_messages(chat_id=resolved_chat_id, message_ids=message_id)
 
         LOGGER(__name__).info(f"Downloading media from URL: {post_url}")
+        LOGGER(__name__).debug(f"Message type - Document: {chat_message.document}, Video: {chat_message.video}, Audio: {chat_message.audio}, Photo: {chat_message.photo}, Text: {bool(chat_message.text)}, Caption: {bool(chat_message.caption)}")
 
         if chat_message.document or chat_message.video or chat_message.audio:
             file_size = (
@@ -445,13 +446,49 @@ async def handle_download(bot: Client, message: Message, post_url: str, user_cli
             download_path = get_download_path(message.id, filename)
 
             # CRITICAL FIX: Use client_to_use for download (user's client for private channels)
+            # Create sync progress callback with throttling to avoid RAM overhead
+            last_update = {"time": time(), "percent": 0}
+            def download_progress_callback(current, total):
+                """Sync callback with throttling - update max every 2 seconds or 5% change"""
+                try:
+                    if total > 0:
+                        now = time()
+                        percent = int((current / total) * 100)
+                        elapsed = now - start_time
+                        
+                        # Throttle updates: only update if 5+ seconds passed OR 10% progress changed OR completion
+                        should_update = (
+                            (now - last_update["time"] >= 5) or  # 5 seconds minimum between updates
+                            (percent - last_update["percent"] >= 10) or  # 10% progress change
+                            (percent == 100)  # Always show completion
+                        )
+                        
+                        if should_update and elapsed > 0:
+                            last_update["time"] = now
+                            last_update["percent"] = percent
+                            
+                            speed_mbps = (current / elapsed) / 1024 / 1024
+                            remaining_time = (total - current) / (current / elapsed) if current > 0 else 0
+                            eta_str = f"{int(remaining_time)}s" if remaining_time < 60 else f"{int(remaining_time / 60)}m"
+                            
+                            # Update message (non-blocking, safe for RAM)
+                            try:
+                                import asyncio
+                                asyncio.create_task(progress_message.edit_text(
+                                    f"**📥 Downloading: {percent}%**\n"
+                                    f"Speed: {speed_mbps:.1f} MB/s\n"
+                                    f"ETA: {eta_str}"
+                                ))
+                            except:
+                                pass
+                except:
+                    pass
+            
             media_path = await download_media_fast(
                 client=client_to_use,
                 message=chat_message,
                 file=download_path,
-                progress_callback=lambda c, t: safe_progress_callback(
-                    c, t, *progressArgs("📥 Downloading Progress", progress_message, start_time)
-                )
+                progress_callback=download_progress_callback
             )
 
             LOGGER(__name__).info(f"Downloaded media: {media_path}")
@@ -502,7 +539,8 @@ async def handle_download(bot: Client, message: Message, post_url: str, user_cli
         elif chat_message.text or chat_message.caption:
             await message.reply(parsed_text or parsed_caption)
         else:
-            await message.reply("**No media or text found in the post URL.**")
+            LOGGER(__name__).warning(f"Message {message_id} in chat {resolved_chat_id} has no media/text - possible restricted content or empty message")
+            await message.reply("**No media or text found in the post URL.**\n\nThe message may be:\n• Restricted/premium content\n• A forwarded message without media\n• Empty or deleted\n• Accessible only with premium account")
 
     except (PeerIdInvalid, BadRequest, KeyError) as e:
         LOGGER(__name__).error(f"Access error for URL {post_url}: {e}")
