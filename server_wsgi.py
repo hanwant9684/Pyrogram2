@@ -1352,7 +1352,7 @@ def run_bot():
                 )
             
             main.LOGGER(__name__).info("Starting Telegram bot from server_wsgi.py (long polling)")
-            await main.bot.start(bot_token=main.PyroConf.BOT_TOKEN)
+            await main.bot.start()
             
             import time
             main.bot.start_time = time.time()
@@ -1430,16 +1430,9 @@ def run_bot():
             background_tasks.append(asyncio.create_task(periodic_orphaned_cleanup()))
             main.LOGGER(__name__).info("Started periodic orphaned file cleanup (every 1h)")
             
-            _logger.info("About to verify dump channel...")
-            
-            try:
-                await main.verify_dump_channel()
-                _logger.info("Dump channel verification complete")
-            except Exception as e:
-                _logger.error(f"Error in verify_dump_channel: {e}")
-            
             _logger.info("Bot is now running and listening for updates...")
-            await main.bot.run_until_disconnected()
+            while True:
+                await asyncio.sleep(3600)
         finally:
             _logger.info("Bot shutting down gracefully...")
             
