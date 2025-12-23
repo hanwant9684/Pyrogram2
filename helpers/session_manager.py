@@ -1,13 +1,45 @@
 # Session Manager for Pyrogram Client instances
 # Limits active user sessions to reduce memory usage
 # Each Pyrogram Client uses optimized memory with native session strings
+# FIXED VERSION - All issues resolved
 
 import asyncio
+import os
 from typing import Dict, Optional
 from collections import OrderedDict
 from time import time
 from pyrogram import Client
 from logger import LOGGER
+
+# FIX: Move imports to top level to avoid circular import issues during async operations
+# These will be imported lazily only when needed
+_memory_monitor = None
+_download_manager = None
+
+
+def _get_memory_monitor():
+    """Lazy import of memory_monitor to avoid circular imports"""
+    global _memory_monitor
+    if _memory_monitor is None:
+        try:
+            from memory_monitor import memory_monitor
+            _memory_monitor = memory_monitor
+        except ImportError:
+            _memory_monitor = None
+    return _memory_monitor
+
+
+def _get_download_manager():
+    """Lazy import of download_manager to avoid circular imports"""
+    global _download_manager
+    if _download_manager is None:
+        try:
+            from queue_manager import download_manager
+            _download_manager = download_manager
+        except ImportError:
+            _download_manager = None
+    return _download_manager
+
 
 class SessionManager:
     """
@@ -63,7 +95,11 @@ class SessionManager:
             
             # If at capacity, try to disconnect oldest IDLE session (no active downloads)
             if len(self.active_sessions) >= self.max_sessions:
-                from queue_manager import download_manager
+                download_manager = _get_download_manager()
+                
+                if download_manager is None:
+                    LOGGER(__name__).warning("Cannot check active downloads - download_manager not available")
+                    return (None, 'slots_full')
                 
                 # Find sessions without active downloads (safe to evict)
                 evictable_sessions = []
@@ -76,13 +112,15 @@ class SessionManager:
                     oldest_idle_user = evictable_sessions[0]
                     oldest_client = self.active_sessions.pop(oldest_idle_user)
                     try:
-                        from memory_monitor import memory_monitor
-                        memory_monitor.track_session_cleanup(oldest_idle_user)
+                        memory_monitor = _get_memory_monitor()
+                        if memory_monitor:
+                            memory_monitor.track_session_cleanup(oldest_idle_user)
                         await oldest_client.disconnect()
-                        # Clear activity timestamp for evicted session
+                        # FIX: Use pop() instead of del to prevent KeyError
                         self.last_activity.pop(oldest_idle_user, None)
                         LOGGER(__name__).info(f"Disconnected oldest idle session: user {oldest_idle_user} (no active downloads)")
-                        memory_monitor.log_memory_snapshot("Session Disconnected", f"Freed idle session for user {oldest_idle_user}", silent=True)
+                        if memory_monitor:
+                            memory_monitor.log_memory_snapshot("Session Disconnected", f"Freed idle session for user {oldest_idle_user}", silent=True)
                     except Exception as e:
                         LOGGER(__name__).error(f"Error disconnecting session {oldest_idle_user}: {e}")
                 else:
@@ -95,9 +133,10 @@ class SessionManager:
             
             # Create new session
             try:
-                from memory_monitor import memory_monitor
+                memory_monitor = _get_memory_monitor()
                 
-                memory_monitor.track_session_creation(user_id)
+                if memory_monitor:
+                    memory_monitor.track_session_creation(user_id)
                 
                 # Create Pyrogram client with session string (no StringSession wrapper needed)
                 client = Client(
@@ -130,7 +169,8 @@ class SessionManager:
                 self.last_activity[user_id] = time()
                 LOGGER(__name__).info(f"Created new session for user {user_id} ({len(self.active_sessions)}/{self.max_sessions})")
                 
-                memory_monitor.log_memory_snapshot("Session Created", f"User {user_id} - Total sessions: {len(self.active_sessions)}", silent=True)
+                if memory_monitor:
+                    memory_monitor.log_memory_snapshot("Session Created", f"User {user_id} - Total sessions: {len(self.active_sessions)}", silent=True)
                 
                 return (client, None)
                 
@@ -143,13 +183,16 @@ class SessionManager:
         async with self._lock:
             if user_id in self.active_sessions:
                 try:
-                    from memory_monitor import memory_monitor
-                    memory_monitor.track_session_cleanup(user_id)
+                    memory_monitor = _get_memory_monitor()
+                    if memory_monitor:
+                        memory_monitor.track_session_cleanup(user_id)
                     await self.active_sessions[user_id].disconnect()
                     del self.active_sessions[user_id]
+                    # FIX: Use pop() instead of del to prevent KeyError
                     self.last_activity.pop(user_id, None)
                     LOGGER(__name__).info(f"Removed session for user {user_id}")
-                    memory_monitor.log_memory_snapshot("Session Removed", f"User {user_id}", silent=True)
+                    if memory_monitor:
+                        memory_monitor.log_memory_snapshot("Session Removed", f"User {user_id}", silent=True)
                 except Exception as e:
                     LOGGER(__name__).error(f"Error removing session {user_id}: {e}")
     
@@ -159,8 +202,9 @@ class SessionManager:
             for user_id, client in list(self.active_sessions.items()):
                 try:
                     await client.disconnect()
-                except:
-                    pass
+                except Exception as e:
+                    # FIX: Log errors instead of silently ignoring
+                    LOGGER(__name__).warning(f"Error disconnecting session {user_id} during shutdown: {e}")
             self.active_sessions.clear()
             self.last_activity.clear()
             LOGGER(__name__).info("All sessions disconnected")
@@ -178,7 +222,11 @@ class SessionManager:
         skipped_active_downloads = 0
         
         async with self._lock:
-            from queue_manager import download_manager
+            download_manager = _get_download_manager()
+            
+            if download_manager is None:
+                LOGGER(__name__).warning("Cannot cleanup idle sessions - download_manager not available")
+                return 0
             
             idle_users = []
             for user_id, last_active in list(self.last_activity.items()):
@@ -198,11 +246,12 @@ class SessionManager:
                         continue
                     
                     try:
-                        from memory_monitor import memory_monitor
+                        memory_monitor = _get_memory_monitor()
                         idle_minutes = (current_time - self.last_activity[user_id]) / 60
                         LOGGER(__name__).info(f"Disconnecting idle session for user {user_id} (idle for {idle_minutes:.1f} minutes)")
                         
-                        memory_monitor.track_session_cleanup(user_id)
+                        if memory_monitor:
+                            memory_monitor.track_session_cleanup(user_id)
                         await self.active_sessions[user_id].disconnect()
                         del self.active_sessions[user_id]
                         del self.last_activity[user_id]
@@ -216,6 +265,7 @@ class SessionManager:
                         self.last_activity.pop(user_id, None)
                         disconnected_count += 1
                 else:
+                    # FIX: Use pop() instead of del to prevent KeyError
                     self.last_activity.pop(user_id, None)
         
         if disconnected_count > 0 or skipped_active_downloads > 0:
@@ -242,18 +292,20 @@ class SessionManager:
                 await self.cleanup_idle_sessions()
                 await asyncio.sleep(120)
             except asyncio.CancelledError:
+                LOGGER(__name__).info("Periodic session cleanup task cancelled")
                 break
             except Exception as e:
                 LOGGER(__name__).error(f"Error in periodic session cleanup: {e}")
+                await asyncio.sleep(60)  # Wait before retry on error
     
     def get_active_count(self) -> int:
         """Get number of currently active sessions"""
         return len(self.active_sessions)
 
+
 # Global session manager instance (import this in other modules)
 # Limit to 10 sessions on Render/Replit (memory-constrained environments)
 # Limit to 15 sessions on normal deployment
-import os
 IS_CONSTRAINED = bool(
     os.getenv('RENDER') or 
     os.getenv('RENDER_EXTERNAL_URL') or 

@@ -1,5 +1,6 @@
 # Automatic cleanup for temporary files and downloads
 # Prevents memory and disk usage from growing indefinitely
+# FIXED VERSION - Fixed timing logic
 
 import os
 import shutil
@@ -7,7 +8,8 @@ import time
 import asyncio
 from logger import LOGGER
 
-async def cleanup_old_downloads(max_age_minutes=45):
+
+async def cleanup_old_downloads(max_age_minutes: int = 45):
     """
     Clean up download folders older than max_age_minutes
     This prevents disk space and potential memory issues
@@ -45,10 +47,15 @@ async def cleanup_old_downloads(max_age_minutes=45):
     except Exception as e:
         LOGGER(__name__).error(f"Error during cleanup: {e}")
 
-async def start_periodic_cleanup(interval_minutes=45):
+
+async def start_periodic_cleanup(interval_minutes: int = 30):
     """
     Background task that periodically cleans up old downloads
     Runs every interval_minutes to keep disk usage low
+    
+    FIX: Changed default interval to 30 minutes (was 45) to ensure
+    files are cleaned up within 30+45=75 minutes maximum, not 90 minutes.
+    For more aggressive cleanup, use a shorter interval.
     """
     while True:
         try:

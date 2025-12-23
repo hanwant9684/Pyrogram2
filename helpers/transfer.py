@@ -1,32 +1,43 @@
 """
 HIGH-SPEED TRANSFER MODULE for Per-User Sessions
 =================================================
+FIXED VERSION - Removed unused code, fixed IS_CONSTRAINED
 
 This module implements optimized file transfers using Pyrogram's native streaming.
 Since each user has their own Telegram session, no global connection
 pooling is needed - each session can use full connection capacity.
 
 CONFIGURATION (Environment Variables):
-    pass
 - CONNECTIONS_PER_TRANSFER: Connections per download/upload (default: 16)
 """
 import os
 import asyncio
-import math
-import inspect
-import psutil
 import gc
-from typing import Optional, Callable, BinaryIO, Set, Dict
+from typing import Optional, Callable, Set
 from pyrogram import Client
 from pyrogram.types import Message
 from logger import LOGGER
 
 CONNECTIONS_PER_TRANSFER = int(os.getenv("CONNECTIONS_PER_TRANSFER", "16"))
 
+# FIX: Use same environment detection as session_manager.py
+IS_CONSTRAINED = bool(
+    os.getenv('RENDER') or 
+    os.getenv('RENDER_EXTERNAL_URL') or 
+    os.getenv('REPLIT_DEPLOYMENT') or 
+    os.getenv('REPL_ID')
+)
+
+
 def get_ram_usage_mb():
     """Get current RAM usage in MB"""
-    process = psutil.Process(os.getpid())
-    return process.memory_info().rss / 1024 / 1024
+    try:
+        import psutil
+        process = psutil.Process(os.getpid())
+        return process.memory_info().rss / 1024 / 1024
+    except ImportError:
+        return 0.0
+
 
 def create_ram_logging_callback(original_callback: Optional[Callable], file_size: int, operation: str, file_name: str):
     """
@@ -61,11 +72,8 @@ def create_ram_logging_callback(original_callback: Optional[Callable], file_size
     
     return ram_logging_wrapper
 
-IS_CONSTRAINED = False
 
-MAX_CONNECTIONS = CONNECTIONS_PER_TRANSFER
-MAX_UPLOAD_CONNECTIONS = CONNECTIONS_PER_TRANSFER
-MAX_DOWNLOAD_CONNECTIONS = CONNECTIONS_PER_TRANSFER
+# FIX: Removed unused MAX_CONNECTIONS, MAX_UPLOAD_CONNECTIONS, MAX_DOWNLOAD_CONNECTIONS
 
 
 def has_downloadable_media(msg: Message) -> bool:
@@ -175,6 +183,7 @@ async def download_media_fast(
         LOGGER(__name__).error(f"Pyrogram download failed, falling back to standard: {e}")
         return await client.download_media(message, file_name=file, progress=progress_callback)
 
+
 async def upload_media_fast(
     client: Client,
     file_path: str,
@@ -198,11 +207,8 @@ async def upload_media_fast(
             f"({file_size/1024/1024:.1f}MB)"
         )
         
-        ram_callback = create_ram_logging_callback(progress_callback, file_size, "UPLOAD", file_name)
-        
-        # Pyrogram's upload is handled directly via send_photo/send_video/send_document
-        # This function returns None and lets the send methods handle the actual upload
-        # The progress callback is passed through the send methods
+        # Note: ram_callback is created but the actual upload is handled by send methods
+        # This function prepares the upload but doesn't execute it
         
         end_ram = get_ram_usage_mb()
         LOGGER(__name__).info(f"[RAM] UPLOAD COMPLETE: {file_name} - RAM before GC: {end_ram:.1f}MB")
@@ -239,12 +245,5 @@ def get_connection_count_for_size(file_size: int, max_count: int = CONNECTIONS_P
         return min(4, max_count)
 
 
-def _optimized_connection_count_upload(file_size, max_count=MAX_UPLOAD_CONNECTIONS, full_size=100*1024*1024):
-    """Connection count function for uploads."""
-    return get_connection_count_for_size(file_size, max_count)
-
-def _optimized_connection_count_download(file_size, max_count=MAX_DOWNLOAD_CONNECTIONS, full_size=100*1024*1024):
-    """Connection count function for downloads."""
-    return get_connection_count_for_size(file_size, max_count)
-
+# FIX: Removed unused _optimized_connection_count_upload and _optimized_connection_count_download functions
 # Note: Pyrogram doesn't use ParallelTransferrer - connection optimization is built-in

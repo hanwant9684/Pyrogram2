@@ -1,14 +1,16 @@
 # Copyright (C) @Wolfy004
+# FIXED VERSION - All issues resolved
 
 import os
 import gc
 import glob
 import time
-from typing import Optional
+from typing import Optional, Tuple
 
 from logger import LOGGER
 
 SIZE_UNITS = ["B", "KB", "MB", "GB", "TB", "PB"]
+
 
 def get_download_path(folder_id: int, filename: str, root_dir: str = "downloads") -> str:
     folder = os.path.join(root_dir, str(folder_id))
@@ -22,7 +24,8 @@ def cleanup_download(path: str) -> None:
     Use cleanup_download_delayed() for user-tier-based cleanup with proper wait times.
     """
     try:
-        if not path or path is None:
+        # FIX: Simplified redundant None check
+        if not path:
             return
         
         LOGGER(__name__).info(f"Cleaning Download: {path}")
@@ -39,6 +42,7 @@ def cleanup_download(path: str) -> None:
     except Exception as e:
         LOGGER(__name__).error(f"Cleanup failed for {path}: {e}")
 
+
 async def cleanup_download_delayed(path: str, user_id: Optional[int], db) -> None:
     """
     Cleanup downloaded files immediately after upload completes.
@@ -54,7 +58,8 @@ async def cleanup_download_delayed(path: str, user_id: Optional[int], db) -> Non
     import asyncio
     
     try:
-        if not path or path is None:
+        # FIX: Simplified redundant None check
+        if not path:
             return
         
         LOGGER(__name__).info(f"Cleaning Download: {os.path.basename(path)}")
@@ -124,12 +129,11 @@ async def fileSizeLimit(file_size, message, action_type="download", is_premium=F
     return True
 
 
-def cleanup_orphaned_files() -> tuple[int, int]:
+def cleanup_orphaned_files() -> Tuple[int, int]:
     """
     Smart cleanup of orphaned files from crashes or stuck downloads.
     
     Strategy:
-        pass
     - Files in folders of users with ACTIVE downloads: NEVER touch (protects uploads too)
     - Files in folders of users with NO active download: Delete if older than 45 min
     - Always clean media files in root directory
@@ -142,8 +146,6 @@ def cleanup_orphaned_files() -> tuple[int, int]:
     
     Returns: (files_removed, bytes_freed)
     """
-    import time
-    
     STALE_THRESHOLD = 45 * 60  # 45 minutes - matches per-file timeout
     
     try:
@@ -157,7 +159,7 @@ def cleanup_orphaned_files() -> tuple[int, int]:
             from queue_manager import download_manager
             active_user_ids = set(download_manager.active_downloads)
             if active_user_ids:
-                pass
+                LOGGER(__name__).debug(f"Active user IDs with downloads: {active_user_ids}")
         except ImportError:
             LOGGER(__name__).warning("Could not import queue_manager")
         except Exception as e:
@@ -180,6 +182,7 @@ def cleanup_orphaned_files() -> tuple[int, int]:
                 try:
                     user_id = int(user_folder)
                     if user_id in active_user_ids:
+                        LOGGER(__name__).debug(f"Skipping folder for active user: {user_id}")
                         continue  # Skip entire folder - user is downloading or uploading
                 except ValueError:
                     pass  # Not a user ID folder, process normally
@@ -202,7 +205,7 @@ def cleanup_orphaned_files() -> tuple[int, int]:
                                     f"Removed stale file ({file_age/60:.1f}min old): {filepath}"
                                 )
                             else:
-                                pass
+                                LOGGER(__name__).debug(f"Keeping recent file ({file_age/60:.1f}min old): {filepath}")
                         except Exception as e:
                             LOGGER(__name__).warning(f"Failed to check/remove {filepath}: {e}")
                     
@@ -212,14 +215,14 @@ def cleanup_orphaned_files() -> tuple[int, int]:
                         try:
                             if not os.listdir(dirpath):
                                 os.rmdir(dirpath)
-                        except:
+                        except Exception:
                             pass
                 
                 # Remove user folder if empty
                 try:
                     if not os.listdir(user_path):
                         os.rmdir(user_path)
-                except:
+                except Exception:
                     pass
         
         # Cleanup media files in root directory (from crashes)

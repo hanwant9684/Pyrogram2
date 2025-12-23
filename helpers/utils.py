@@ -1,5 +1,6 @@
 # Copyright (C) @Wolfy004
 # Pyrogram-compatible version
+# FIXED VERSION - Memory leaks, bare excepts, and garbage code removed
 
 import os
 import gc
@@ -37,8 +38,6 @@ from helpers.msg import (
 
 from helpers.transfer import download_media_fast
 
-# Ultra-minimal progress template (near-zero RAM)
-# No string formatting needed - computed inline
 
 async def cmd_exec(cmd, shell=False):
     if shell:
@@ -48,11 +47,11 @@ async def cmd_exec(cmd, shell=False):
     stdout, stderr = await proc.communicate()
     try:
         stdout = stdout.decode().strip()
-    except:
+    except Exception:
         stdout = "Unable to decode the response!"
     try:
         stderr = stderr.decode().strip()
-    except:
+    except Exception:
         stderr = "Unable to decode the error!"
     return stdout, stderr, proc.returncode
 
@@ -81,7 +80,7 @@ async def has_video_stream(video_path):
                 try:
                     proc.kill()
                     await asyncio.wait_for(proc.wait(), timeout=2.0)
-                except:
+                except Exception:
                     pass
             return False, None, "ffprobe timed out"
         
@@ -89,8 +88,6 @@ async def has_video_stream(video_path):
         stderr_str = stderr.decode().strip() if stderr else ""
         
         if proc.returncode != 0 or not stdout_str:
-            if stderr_str:
-                pass
             return False, None, stderr_str or "No video stream found"
         
         parts = stdout_str.split(',')
@@ -108,7 +105,7 @@ async def has_video_stream(video_path):
             try:
                 proc.kill()
                 await asyncio.wait_for(proc.wait(), timeout=2.0)
-            except:
+            except Exception:
                 pass
         return False, None, str(e)
 
@@ -140,7 +137,7 @@ async def generate_thumbnail(video_path, thumb_path=None, duration=None):
     file_size = 0
     try:
         file_size = os.path.getsize(video_path)
-    except Exception as e:
+    except OSError:
         pass
     
     base_timeout = 10.0
@@ -193,7 +190,7 @@ async def generate_thumbnail(video_path, thumb_path=None, duration=None):
                     try:
                         proc.kill()
                         await asyncio.wait_for(proc.wait(), timeout=3.0)
-                    except Exception as kill_err:
+                    except Exception:
                         pass
                 continue
             
@@ -206,28 +203,24 @@ async def generate_thumbnail(video_path, thumb_path=None, duration=None):
                         else:
                             try:
                                 os.remove(thumb_path)
-                            except:
+                            except OSError:
                                 pass
-                except OSError as e:
+                except OSError:
                     pass
-            else:
-                stderr_str = stderr.decode().strip() if stderr else ""
-                if stderr_str and len(stderr_str) > 0:
-                    pass
-        except Exception as e:
+        except Exception:
             if proc:
                 try:
                     if proc.returncode is None:
                         proc.kill()
                         await asyncio.wait_for(proc.wait(), timeout=2.0)
-                except:
+                except Exception:
                     pass
         finally:
             if proc and proc.returncode is None:
                 try:
                     proc.kill()
                     await asyncio.wait_for(proc.wait(), timeout=2.0)
-                except Exception as cleanup_err:
+                except Exception:
                     pass
                 finally:
                     proc = None
@@ -236,7 +229,7 @@ async def generate_thumbnail(video_path, thumb_path=None, duration=None):
     try:
         if os.path.exists(thumb_path):
             os.remove(thumb_path)
-    except:
+    except OSError:
         pass
     return None
 
@@ -247,7 +240,7 @@ async def get_media_info(path):
             "ffprobe", "-hide_banner", "-loglevel", "error",
             "-print_format", "json", "-show_format", "-show_streams", path,
         ])
-    except Exception as e:
+    except Exception:
         return 0, None, None
     
     if result[0] and result[2] == 0:
@@ -305,12 +298,14 @@ class ProgressThrottle:
     Centralized progress throttling to prevent Telegram API rate limits.
     Enforces minimum time between updates and handles rate limit errors gracefully.
     Also tracks transfer progress for accurate speed calculations.
+    
+    FIXED: More aggressive cleanup to prevent memory accumulation.
     """
     def __init__(self):
         self.message_throttles = {}  # message_id -> throttle data
         self._last_sweep = time()
-        self._sweep_interval = 300  # Sweep every 5 minutes
-        self._max_age = 3600  # Remove entries older than 1 hour
+        self._sweep_interval = 180  # FIXED: Sweep every 3 minutes (was 5)
+        self._max_age = 1800  # FIXED: Remove entries older than 30 min (was 1 hour)
     
     def _sweep_stale_entries(self, now):
         """Remove stale throttle entries to prevent memory accumulation"""
@@ -318,23 +313,22 @@ class ProgressThrottle:
             return
         
         self._last_sweep = now
-        stale_keys = []
-        for msg_id, data in self.message_throttles.items():
-            if now - data.get('last_update_time', 0) > self._max_age:
-                stale_keys.append(msg_id)
+        stale_keys = [
+            msg_id for msg_id, data in self.message_throttles.items()
+            if now - data.get('last_update_time', 0) > self._max_age
+        ]
         
         for key in stale_keys:
             del self.message_throttles[key]
         
         if stale_keys:
-            pass
+            LOGGER(__name__).debug(f"Cleaned up {len(stale_keys)} stale throttle entries")
     
     def should_update(self, message_id, current, total, now):
         """
         Determine if progress should be updated based on throttle rules.
         
         Rules:
-            pass
         - Minimum 5 seconds between updates (or 10% progress change)
         - If rate limited, exponential backoff up to 60 seconds
         - Always allow 100% completion
@@ -429,7 +423,7 @@ async def safe_progress_callback(current, total, *args):
     Args:
         current: Current bytes transferred
         total: Total bytes to transfer
-        *args: (action, progress_message, start_time, progress_bar_template, filled_char, empty_char)
+        *args: (action, progress_message, start_time)
     """
     progress_message = None
     try:
@@ -451,7 +445,6 @@ async def safe_progress_callback(current, total, *args):
             return
         
         # Calculate current speed based on bytes transferred since last update
-        # This gives accurate real-time speed instead of average speed
         current_speed = _progress_throttle.get_current_speed(message_id, current, now)
         
         # Fallback to average speed if no previous data (first update)
@@ -465,19 +458,15 @@ async def safe_progress_callback(current, total, *args):
         # Import here to avoid circular dependency
         from helpers.files import get_readable_file_size, get_readable_time
         
-        # RAM-efficient visual progress bar using string slicing (no multiplication)
-        # Pre-built 20-character templates - only ~40 bytes total
+        # RAM-efficient visual progress bar using string slicing
         pct = int(percentage)
         filled_count = pct // 5  # 0-20 filled blocks
         
-        # Pre-built full strings (sliced, not multiplied - minimal RAM)
         FILLED_BAR = "████████████████████"  # 20 filled chars
         EMPTY_BAR = "░░░░░░░░░░░░░░░░░░░░"   # 20 empty chars
         
-        # Build progress bar by slicing pre-built strings
         progress_bar = f"[{FILLED_BAR[:filled_count]}{EMPTY_BAR[:20-filled_count]}]"
         
-        # Visual format with progress bar
         progress_text = f"**{action}** `{pct}%`\n{progress_bar}\n{get_readable_file_size(current)}/{get_readable_file_size(total)} • {get_readable_file_size(current_speed)}/s • {get_readable_time(int(eta))}"
         
         # Try to update message
@@ -490,54 +479,38 @@ async def safe_progress_callback(current, total, *args):
         
         # Check if it's a rate limit error
         if 'wait of' in error_str and 'seconds is required' in error_str:
-            # This is a rate limit error - mark it and back off
             if progress_message:
                 _progress_throttle.mark_rate_limited(progress_message.id, time())
-            LOGGER(__name__).warning(f"Rate limited by Telegram API - backing off")
-        # Silently ignore errors related to deleted or invalid messages
-        elif any(err in error_str for err in ['message_id_invalid', 'message not found', 'message to edit not found', 'message can\'t be edited']):
-            pass
+            LOGGER(__name__).warning("Rate limited by Telegram API - backing off")
+        elif any(err in error_str for err in ['message_id_invalid', 'message not found', 'message to edit not found', "message can't be edited"]):
+            pass  # Silently ignore deleted/invalid messages
         else:
-            # Log other errors but don't raise to avoid interrupting downloads
             LOGGER(__name__).warning(f"Progress callback error: {e}")
 
 
 async def forward_to_dump_channel(bot, sent_message, user_id, caption=None, source_url=None):
     """
     Send media to dump channel for monitoring (if configured).
-    Uses copy_message to avoid "forwarded from" tag, then updates caption with tracking info.
-    
-    Args:
-        bot: Pyrogram Client instance
-        sent_message: The message object that was sent to the user
-        user_id: User ID who downloaded this
-        caption: Original caption (optional, added below user ID)
-        source_url: Original download URL (optional, shows where user downloaded from)
+    Uses copy_message to avoid "forwarded from" tag.
     """
     from config import PyroConf
     
-    # Only send if dump channel is configured
     if not PyroConf.DUMP_CHANNEL_ID:
         return
     
     try:
-        # Convert channel ID to integer format
         channel_id = int(PyroConf.DUMP_CHANNEL_ID)
         
-        # Validate channel ID format (must be negative for groups/channels)
         if channel_id > 0:
-            LOGGER(__name__).warning(f"[DUMP_CHANNEL] Invalid dump channel ID (positive): {channel_id} - must be negative for groups/channels")
+            LOGGER(__name__).warning(f"[DUMP_CHANNEL] Invalid dump channel ID (positive): {channel_id}")
             return
         
-        # Build combined caption with all info
         dump_caption = f"👤 User ID: {user_id}"
         if source_url:
             dump_caption += f"\n🔗 Source: {source_url}"
         if caption:
             dump_caption += f"\n\n{caption}"
         
-        
-        # Use copy_message to avoid "forwarded from" tag, with new caption containing tracking info
         try:
             await bot.copy_message(
                 chat_id=channel_id,
@@ -551,11 +524,11 @@ async def forward_to_dump_channel(bot, sent_message, user_id, caption=None, sour
             LOGGER(__name__).warning(f"[DUMP_CHANNEL] Failed to copy media for user {user_id}: {copy_error}")
             
     except Exception as e:
-        # Log error but don't interrupt user
         LOGGER(__name__).error(f"[DUMP_CHANNEL] Unexpected error: {e}")
 
-# Generate progress args for downloading/uploading (minimal tuple - low RAM)
+
 def progressArgs(action: str, progress_message, start_time):
+    """Generate progress args for downloading/uploading (minimal tuple - low RAM)"""
     return (action, progress_message, start_time)
 
 
@@ -563,9 +536,6 @@ async def send_media(
     bot, message, media_path, media_type, caption, progress_message, start_time, user_id=None, source_url=None
 ):
     """Upload media with all safeguards (size checks, fast uploads, thumbnails, dump channel).
-    
-    Args:
-        source_url: Original download URL for tracking in dump channel (no extra RAM usage)
     
     Returns:
         bool: True if upload succeeded, False if it was rejected or failed
@@ -578,10 +548,9 @@ async def send_media(
     from memory_monitor import memory_monitor
     memory_monitor.log_memory_snapshot("Upload Start", f"User {user_id or 'unknown'}: {os.path.basename(media_path)} ({media_type})", silent=True)
     
-    progress_args = progressArgs("📤 Uploading", progress_message, start_time)
-
     # Create sync upload progress callback with throttling
     last_update = {"time": time(), "percent": 0}
+    
     def create_upload_progress_callback():
         def upload_progress(current, total):
             try:
@@ -590,11 +559,10 @@ async def send_media(
                     percent = int((current / total) * 100)
                     elapsed = now - start_time
                     
-                    # Throttle updates: only update if 5+ seconds passed OR 10% progress changed OR complete
                     should_update = (
-                        (now - last_update["time"] >= 5) or  # 5 seconds minimum between updates
-                        (percent - last_update["percent"] >= 10) or  # 10% progress change
-                        (percent == 100)  # Always show completion
+                        (now - last_update["time"] >= 5) or
+                        (percent - last_update["percent"] >= 10) or
+                        (percent == 100)
                     )
                     
                     if should_update and elapsed > 0:
@@ -605,30 +573,24 @@ async def send_media(
                         remaining_time = (total - current) / (current / elapsed) if current > 0 else 0
                         eta_str = f"{int(remaining_time)}s" if remaining_time < 60 else f"{int(remaining_time / 60)}m"
                         try:
-                            import asyncio
                             asyncio.create_task(progress_message.edit_text(
                                 f"**📤 Uploading: {percent}%**\n"
                                 f"Speed: {speed_mbps:.1f} MB/s\n"
                                 f"ETA: {eta_str}"
                             ))
-                        except:
+                        except Exception:
                             pass
-            except:
+            except Exception:
                 pass
         return upload_progress
 
     if media_type == "photo":
         from helpers.transfer import upload_media_fast
         
-        fast_file = await upload_media_fast(
-            bot, 
-            media_path, 
-            progress_callback=None
-        )
+        fast_file = await upload_media_fast(bot, media_path, progress_callback=None)
         
         sent_message = None
         if fast_file:
-            # FastPyrogram upload: Use explicit filename to preserve extension
             sent_message = await bot.send_photo(
                 message.chat.id,
                 photo=fast_file,
@@ -643,42 +605,34 @@ async def send_media(
                 progress=create_upload_progress_callback()
             )
         
-        # Forward to dump channel if configured (RAM-efficient, no re-upload)
         if user_id and sent_message:
             await forward_to_dump_channel(bot, sent_message, user_id, caption, source_url)
         
         memory_monitor.log_memory_snapshot("Upload Complete", f"User {user_id or 'unknown'}: {os.path.basename(media_path)} (photo)", silent=True)
         return True
+        
     elif media_type == "video":
-        # Get video duration and dimensions
         try:
             media_info = await get_media_info(media_path)
             duration = media_info[0] if media_info and len(media_info) > 0 else None
-        except:
+        except Exception:
             duration = None
         
-        # Default video dimensions (only include if values are valid)
         width = 480 if duration and duration > 0 else None
         height = 320 if duration and duration > 0 else None
         
-        # Generate thumbnail for the video
         thumb_path = None
         try:
             thumb_path = await generate_thumbnail(media_path, duration=duration)
-        except:
+        except Exception:
             thumb_path = None
         
         sent_message = None
         try:
             from helpers.transfer import upload_media_fast
             
-            fast_file = await upload_media_fast(
-                bot,
-                media_path,
-                progress_callback=None
-            )
+            fast_file = await upload_media_fast(bot, media_path, progress_callback=None)
             
-            # Build send_video kwargs only with non-None values
             send_kwargs = {
                 "chat_id": message.chat.id,
                 "video": fast_file if fast_file else media_path,
@@ -687,7 +641,6 @@ async def send_media(
                 "supports_streaming": True
             }
             
-            # Only add optional parameters if they're not None
             if duration and duration > 0:
                 send_kwargs["duration"] = int(duration)
             if width and width > 0:
@@ -702,33 +655,27 @@ async def send_media(
             LOGGER(__name__).error(f"Upload failed: {e}")
             raise
         finally:
-            # Clean up thumbnail file
             if thumb_path and os.path.exists(thumb_path):
                 try:
                     os.remove(thumb_path)
-                except Exception:
+                except OSError:
                     pass
         
-        # Forward to dump channel if upload was successful (RAM-efficient, no re-upload)
         if user_id and sent_message:
             await forward_to_dump_channel(bot, sent_message, user_id, caption, source_url)
         
         memory_monitor.log_memory_snapshot("Upload Complete", f"User {user_id or 'unknown'}: {os.path.basename(media_path)} (video)", silent=True)
         return True
+        
     elif media_type == "audio":
         duration, artist, title = await get_media_info(media_path)
         
         from helpers.transfer import upload_media_fast
         
-        fast_file = await upload_media_fast(
-            bot,
-            media_path,
-            progress_callback=None
-        )
+        fast_file = await upload_media_fast(bot, media_path, progress_callback=None)
         
         sent_message = None
         if fast_file:
-            # FastPyrogram upload: Use explicit filename to preserve extension
             sent_message = await bot.send_audio(
                 message.chat.id,
                 audio=fast_file,
@@ -749,24 +696,19 @@ async def send_media(
                 progress=create_upload_progress_callback()
             )
         
-        # Forward to dump channel if configured (RAM-efficient, no re-upload)
         if user_id and sent_message:
             await forward_to_dump_channel(bot, sent_message, user_id, caption, source_url)
         
         memory_monitor.log_memory_snapshot("Upload Complete", f"User {user_id or 'unknown'}: {os.path.basename(media_path)} (audio)", silent=True)
         return True
+        
     elif media_type == "document":
         from helpers.transfer import upload_media_fast
         
-        fast_file = await upload_media_fast(
-            bot,
-            media_path,
-            progress_callback=None
-        )
+        fast_file = await upload_media_fast(bot, media_path, progress_callback=None)
         
         sent_message = None
         if fast_file:
-            # FastPyrogram upload: Use explicit filename to preserve extension
             sent_message = await bot.send_document(
                 message.chat.id,
                 document=fast_file,
@@ -781,12 +723,12 @@ async def send_media(
                 progress=create_upload_progress_callback()
             )
         
-        # Forward to dump channel if configured (RAM-efficient, no re-upload)
         if user_id and sent_message:
             await forward_to_dump_channel(bot, sent_message, user_id, caption, source_url)
         
         memory_monitor.log_memory_snapshot("Upload Complete", f"User {user_id or 'unknown'}: {os.path.basename(media_path)} (document)", silent=True)
         return True
+        
     elif media_type == "voice":
         from helpers.transfer import upload_media_fast
         duration, _, _ = await get_media_info(media_path)
@@ -815,6 +757,7 @@ async def send_media(
         
         memory_monitor.log_memory_snapshot("Upload Complete", f"User {user_id or 'unknown'}: {os.path.basename(media_path)} (voice)", silent=True)
         return True
+        
     elif media_type == "video_note":
         duration, _, _ = await get_media_info(media_path)
         
@@ -841,6 +784,7 @@ async def send_media(
         
         memory_monitor.log_memory_snapshot("Upload Complete", f"User {user_id or 'unknown'}: {os.path.basename(media_path)} (video_note)", silent=True)
         return True
+        
     elif media_type == "animation":
         duration, _, _ = await get_media_info(media_path)
         
@@ -869,6 +813,7 @@ async def send_media(
         
         memory_monitor.log_memory_snapshot("Upload Complete", f"User {user_id or 'unknown'}: {os.path.basename(media_path)} (animation)", silent=True)
         return True
+        
     elif media_type == "sticker":
         from helpers.transfer import upload_media_fast
         fast_file = await upload_media_fast(bot, media_path, progress_callback=None)
@@ -891,6 +836,8 @@ async def send_media(
         
         memory_monitor.log_memory_snapshot("Upload Complete", f"User {user_id or 'unknown'}: {os.path.basename(media_path)} (sticker)", silent=True)
         return True
+    
+    return False
 
 
 PER_FILE_TIMEOUT_SECONDS = 2700
@@ -905,22 +852,6 @@ async def _process_single_media_file(
     
     CRITICAL: This function is defined OUTSIDE processMediaGroup to prevent closure capture.
     All parameters are passed explicitly to avoid holding references to Pyrogram Message objects.
-    
-    Args:
-        client_for_download: Telethon client for downloading
-        bot: Bot client for uploading to user
-        user_message: The user's original message (for reply context)
-        msg: The Telethon Message object to download (WILL BE USED AND RELEASED)
-        download_path: Path to save the downloaded file
-        idx: Current file index (1-based)
-        total_files: Total number of files
-        progress_message: Progress message to update
-        file_start_time: Start time for progress calculation
-        user_id: User ID for tracking
-        source_url: Source URL for dump channel
-        
-    Returns:
-        tuple: (result_path, upload_success)
     """
     # STEP 1: Download this file
     def media_group_download_progress(current, total):
@@ -933,15 +864,14 @@ async def _process_single_media_file(
                     remaining_time = (total - current) / (current / elapsed) if current > 0 else 0
                     eta_str = f"{int(remaining_time)}s" if remaining_time < 60 else f"{int(remaining_time / 60)}m"
                     try:
-                        import asyncio
                         asyncio.create_task(progress_message.edit_text(
                             f"**📥 Downloading {idx}/{total_files}: {percent}%**\n"
                             f"Speed: {speed_mbps:.1f} MB/s\n"
                             f"ETA: {eta_str}"
                         ))
-                    except:
+                    except Exception:
                         pass
-        except:
+        except Exception:
             pass
     
     result_path = await download_media_fast(
@@ -956,7 +886,6 @@ async def _process_single_media_file(
         return None, False
     
     # RAM OPTIMIZATION: Release download buffers before upload starts
-    # This ensures peak RAM usage is minimized by clearing download memory before allocating upload buffers
     gc.collect()
     
     # Determine media type from msg attributes
@@ -971,7 +900,6 @@ async def _process_single_media_file(
         else "document"
     )
     
-    # Get caption
     caption_text = msg.text or ""
     
     # STEP 2: Upload this file
@@ -995,70 +923,40 @@ async def processMediaGroup(chat_message, bot, message, user_id=None, user_clien
     """Process and download a media group (multiple files in one post)
     
     ONE-AT-A-TIME APPROACH: Downloads and uploads each file sequentially to minimize RAM usage.
-    Uses send_media() helper to preserve all safeguards (size checks, fast uploads, thumbnails, dump channel).
-    Files are deleted immediately after upload to free memory.
-    
-    PER-FILE TIMEOUT: Each file gets its own 45-minute timeout instead of sharing one
-    timeout for the entire media group. This ensures large files don't starve smaller ones.
-    
-    RAM OPTIMIZATION: Message objects are NOT retained in lists. We extract message IDs first,
-    then re-fetch each message individually inside the loop. This prevents Telethon from
-    caching large document objects (~4-12MB each) for the entire duration of media group processing.
-    
-    Args:
-        chat_message: The Telegram message containing the media group
-        bot: Bot client (for sending to user)
-        message: User's message
-        user_id: User ID for dump channel tracking
-        user_client: User's Telegram client (for downloading from private channels)
-        source_url: Original download URL for tracking in dump channel (no extra RAM usage)
-        
-    Returns:
-        int: Number of files successfully downloaded and sent (0 if failed)
     """
     from memory_monitor import memory_monitor
     
-    # Log memory at start of media group processing
     memory_monitor.log_memory_snapshot("MediaGroup Start", f"User {user_id or 'unknown'}: Starting media group processing", silent=True)
     
-    # Use user_client to fetch messages from private/public channels
-    # Fall back to bot if user_client is not provided (backward compatibility)
     client_for_download = user_client if user_client else bot
     
-    # Get the chat_id and grouped_id for later use (lightweight references)
-    # PYROGRAM FIX: Use .chat.id instead of .chat_id, and .media_group_id instead of .grouped_id
     chat_id = chat_message.chat.id
     grouped_id = chat_message.media_group_id
     
-    # Get all messages in the media group
     media_group_messages = await client_for_download.get_messages(
         chat_id,
         message_ids=[chat_message.id + i for i in range(-10, 11)]
     )
     
     # CRITICAL RAM FIX: Extract only message IDs, then immediately clear the message list
-    # This prevents Telethon Message objects (with cached document data ~4-12MB each) 
-    # from being held in memory for the entire duration of media group processing
     message_ids = []
     if grouped_id:
         for msg in media_group_messages:
-            # PYROGRAM FIX: Use media_group_id instead of grouped_id
             if msg and hasattr(msg, 'media_group_id') and msg.media_group_id == grouped_id:
                 message_ids.append(msg.id)
     else:
         message_ids = [chat_message.id]
     
-    # Sort IDs to maintain order
     message_ids.sort()
     
-    # CRITICAL: Clear references to message objects immediately to allow GC
+    # CRITICAL: Clear references to message objects immediately
     del media_group_messages
     gc.collect()
     
     total_files = len(message_ids)
     files_sent_count = 0
     
-    # Determine user tier once for all files (avoid blocking DB calls in loop)
+    # Determine user tier once for all files
     is_premium = False
     if user_id:
         try:
@@ -1070,46 +968,29 @@ async def processMediaGroup(chat_message, bot, message, user_id=None, user_clien
     
     start_time = time()
     progress_message = await message.reply(f"📥 Processing media group ({total_files} files)...")
-    LOGGER(__name__).info(
-        f"Processing media group with {total_files} items (one-at-a-time mode for low RAM usage)..."
-    )
+    LOGGER(__name__).info(f"Processing media group with {total_files} items (one-at-a-time mode)...")
 
-    # Process each file one at a time: download → upload (via send_media) → delete → next
-    # Each file gets its own 45-minute timeout (PER_FILE_TIMEOUT_SECONDS)
-    # CRITICAL RAM FIX: We iterate over message IDs and re-fetch each message individually
-    # This prevents holding all Message objects in memory (each can be 4-12MB with cached document data)
     for idx, msg_id in enumerate(message_ids, 1):
-        msg = None  # Will be set after fetching
+        msg = None
         media_path = None
         file_start_time = time()
         
         try:
-            # Update progress
-            await progress_message.edit(
-                f"📥 Processing file {idx}/{total_files} (45min timeout per file)..."
-            )
+            await progress_message.edit(f"📥 Processing file {idx}/{total_files} (45min timeout per file)...")
             
             # CRITICAL RAM FIX: Re-fetch the message fresh for each file
-            # This prevents closure capture and allows each message to be GC'd after processing
             msg = await client_for_download.get_messages(chat_id, message_ids=msg_id)
             
             if not msg or not (msg.media or msg.photo or msg.video or msg.document or msg.audio or msg.voice or msg.video_note or msg.animation or msg.sticker):
                 LOGGER(__name__).warning(f"File {idx}/{total_files}: No media found in message {msg_id}")
                 continue
             
-            # Get filename from message
             filename = get_file_name(msg.id, msg)
-            # Use message.id as folder_id to group all media group files together
             download_path = get_download_path(message.id, filename)
-            
-            # Set expected path BEFORE download starts - ensures cleanup works even if timeout during download
             media_path = download_path
             
-            # STEP 1 & 2: Download and upload using external helper (no closure capture)
             LOGGER(__name__).info(f"Downloading file {idx}/{total_files}: {filename} (45min timeout)")
             
-            # Execute with per-file timeout (45 minutes)
-            # CRITICAL: Uses external helper function to avoid closure capture
             try:
                 result_path, upload_success = await asyncio.wait_for(
                     _process_single_media_file(
@@ -1131,7 +1012,6 @@ async def processMediaGroup(chat_message, bot, message, user_id=None, user_clien
                 if result_path:
                     media_path = result_path
                 
-                # Only count as sent if upload succeeded
                 if upload_success:
                     files_sent_count += 1
                     elapsed = time() - file_start_time
@@ -1146,13 +1026,11 @@ async def processMediaGroup(chat_message, bot, message, user_id=None, user_clien
                     f"(limit: {PER_FILE_TIMEOUT_SECONDS}s / 45min)"
                 )
                 try:
-                    await progress_message.edit(
-                        f"⏰ File {idx}/{total_files} timed out after 45 minutes. Moving to next file..."
-                    )
-                except:
+                    await progress_message.edit(f"⏰ File {idx}/{total_files} timed out after 45 minutes. Moving to next file...")
+                except Exception:
                     pass
             
-            # STEP 3: Delete the file and release RAM (critical for 512MB limit)
+            # STEP 3: Delete the file and release RAM
             if media_path:
                 try:
                     from database_sqlite import db
@@ -1161,11 +1039,10 @@ async def processMediaGroup(chat_message, bot, message, user_id=None, user_clien
                 except Exception as cleanup_err:
                     LOGGER(__name__).warning(f"Failed to cleanup file {idx}/{total_files}: {cleanup_err}")
             
-            # STEP 4: Tier-aware cooldown between files (same as single file downloads)
-            # This wait time prevents RAM spikes by allowing memory to be fully reclaimed
+            # STEP 4: Tier-aware cooldown between files
             if idx < total_files:
                 delay = get_intra_request_delay(is_premium)
-                LOGGER(__name__).info(f"⏳ Waiting {delay}s before next file (RAM cooldown, same as single files)")
+                LOGGER(__name__).info(f"⏳ Waiting {delay}s before next file (RAM cooldown)")
                 await asyncio.sleep(delay)
             
         except asyncio.CancelledError:
@@ -1174,21 +1051,19 @@ async def processMediaGroup(chat_message, bot, message, user_id=None, user_clien
                 try:
                     from database_sqlite import db
                     await cleanup_download_delayed(media_path, user_id, db)
-                except:
+                except Exception:
                     pass
             raise
             
         except Exception as e:
             LOGGER(__name__).error(f"Error processing file {idx}/{total_files} from message {msg_id}: {e}")
-            # Clean up on error and release RAM
             if media_path:
                 try:
                     from database_sqlite import db
                     await cleanup_download_delayed(media_path, user_id, db)
-                except:
+                except Exception:
                     pass
             
-            # Apply tier-aware cooldown even on error (same as single files)
             if idx < total_files:
                 delay = get_intra_request_delay(is_premium)
                 LOGGER(__name__).info(f"⏳ Waiting {delay}s after error before next file")
@@ -1198,33 +1073,26 @@ async def processMediaGroup(chat_message, bot, message, user_id=None, user_clien
         
         finally:
             # CRITICAL RAM FIX: Explicitly delete msg reference after each iteration
-            # This allows Pyrogram to release cached document data (~4-12MB per message)
             if msg is not None:
                 del msg
                 msg = None
             if media_path is not None:
                 del media_path
                 media_path = None
-            # Force garbage collection after each file to release Telethon buffers
             gc.collect()
 
-    # Cleanup throttle data for this progress message
+    # Cleanup throttle data
     _progress_throttle.cleanup(progress_message.id)
     
-    # Delete progress message
     await progress_message.delete()
     
-    # Log memory at end of media group processing
     memory_monitor.log_memory_snapshot("MediaGroup Complete", f"User {user_id or 'unknown'}: {files_sent_count}/{total_files} files processed", silent=True)
     
-    # Force final garbage collection after media group
     gc.collect()
     
     if files_sent_count == 0:
         await message.reply("**❌ No valid media found in the group**")
         return 0
     
-    # Don't send completion message here - let main.py handle it based on user type
-    # This allows customized messages for free vs premium users
     LOGGER(__name__).info(f"Media group complete: {files_sent_count}/{total_files} files sent successfully")
     return files_sent_count
