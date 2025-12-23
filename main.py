@@ -100,6 +100,27 @@ def is_new_update(_, __, message: Message):
 # Create the filter
 new_updates_only = filters.create(is_new_update)
 
+
+# FIXED: Helper function for robust media detection
+def has_downloadable_media(message) -> bool:
+    """
+    Check if a Pyrogram Message has downloadable media.
+    More reliable than checking .media attribute which can be EMPTY or None.
+    """
+    if not message:
+        return False
+    return any([
+        getattr(message, 'photo', None),
+        getattr(message, 'video', None),
+        getattr(message, 'audio', None),
+        getattr(message, 'document', None),
+        getattr(message, 'voice', None),
+        getattr(message, 'video_note', None),
+        getattr(message, 'animation', None),
+        getattr(message, 'sticker', None)
+    ])
+
+
 def track_task(coro, user_id=None):
     task = asyncio.create_task(coro)
     RUNNING_TASKS.add(task)
@@ -424,7 +445,8 @@ async def handle_download(bot: Client, message: Message, post_url: str, user_cli
             
             return
 
-        elif chat_message.media:
+        # FIXED: Use robust media detection instead of just chat_message.media
+        elif has_downloadable_media(chat_message):
             start_time = time()
             progress_message = await message.reply("**📥 Downloading Progress...**")
 
@@ -698,8 +720,19 @@ async def download_range(bot: Client, message: Message):
                 skipped += 1
                 continue
 
-            has_media = bool(getattr(chat_msg, 'media_group_id', None) or getattr(chat_msg, 'media', None))
-            has_text  = bool(getattr(chat_msg, 'text', None) or getattr(chat_msg, 'caption', None))
+            # FIXED: Check specific media attributes for reliable detection
+            has_media = bool(
+                getattr(chat_msg, 'media_group_id', None) or
+                getattr(chat_msg, 'photo', None) or
+                getattr(chat_msg, 'video', None) or
+                getattr(chat_msg, 'audio', None) or
+                getattr(chat_msg, 'document', None) or
+                getattr(chat_msg, 'voice', None) or
+                getattr(chat_msg, 'video_note', None) or
+                getattr(chat_msg, 'animation', None) or
+                getattr(chat_msg, 'sticker', None)
+            )
+            has_text = bool(getattr(chat_msg, 'text', None) or getattr(chat_msg, 'caption', None))
             if not (has_media or has_text):
                 skipped += 1
                 continue
@@ -1193,10 +1226,14 @@ async def verify_premium_command(client: Client, message: Message):
         
         verification_code = message.command[1].strip()
         
-        success, msg = ad_monetization.verify_code(verification_code, message.from_user.id)
+        success, msg = ad_monetization.verify_and_grant_downloads(message.from_user.id, verification_code)
         
         if success:
-            await message.reply(msg)
+            await message.reply(
+                f"✅ **Verification successful!**\n\n"
+                f"🎁 You've been granted **{PREMIUM_DOWNLOADS} free download(s)**!\n\n"
+                f"📥 Start downloading now by sending any Telegram post link."
+            )
             LOGGER(__name__).info(f"User {message.from_user.id} successfully verified ad code and received downloads")
         else:
             await message.reply(msg)
