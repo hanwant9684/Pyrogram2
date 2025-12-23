@@ -511,7 +511,7 @@ async def safe_progress_callback(current, total, *args):
 async def forward_to_dump_channel(bot, sent_message, user_id, caption=None, source_url=None):
     """
     Send media to dump channel for monitoring (if configured).
-    Sends user ID and source info as a text message below the media.
+    Uses copy_message to avoid "forwarded from" tag, then updates caption with tracking info.
     
     Args:
         bot: Pyrogram Client instance
@@ -533,38 +533,34 @@ async def forward_to_dump_channel(bot, sent_message, user_id, caption=None, sour
         
         # Validate channel ID format (must be negative for groups/channels)
         if channel_id > 0:
-            LOGGER(__name__).debug(f"Dump channel ID is positive, appears unconfigured")
+            LOGGER(__name__).warning(f"[DUMP_CHANNEL] Invalid dump channel ID (positive): {channel_id} - must be negative for groups/channels")
             return
         
-        # Build info message: User ID → Source → Caption
-        info_text = f"👤 User ID: {user_id}"
+        # Build combined caption with all info
+        dump_caption = f"👤 User ID: {user_id}"
         if source_url:
-            info_text += f"\n🔗 Source: {source_url}"
+            dump_caption += f"\n🔗 Source: {source_url}"
         if caption:
-            info_text += f"\n\n{caption}"
+            dump_caption += f"\n\n{caption}"
         
-        # Simply forward the message without modification, then send info separately
+        LOGGER(__name__).debug(f"[DUMP_CHANNEL] Copying message {sent_message.id} to channel {channel_id} with caption")
+        
+        # Use copy_message to avoid "forwarded from" tag, with new caption containing tracking info
         try:
-            # Forward message keeps original formatting
-            await bot.forward_messages(
+            await bot.copy_message(
                 chat_id=channel_id,
                 from_chat_id=sent_message.chat.id,
-                message_ids=[sent_message.id]
+                message_id=sent_message.id,
+                caption=dump_caption
             )
-        except Exception as forward_error:
-            LOGGER(__name__).debug(f"Forward failed: {forward_error}, skipping")
-            return
-        
-        # Send info as separate message
-        try:
-            await bot.send_message(chat_id=channel_id, text=info_text)
-        except Exception as msg_error:
-            LOGGER(__name__).debug(f"Sending info message failed: {msg_error}")
+            LOGGER(__name__).info(f"[DUMP_CHANNEL] ✅ Media copied to dump channel for user {user_id}")
+                
+        except Exception as copy_error:
+            LOGGER(__name__).warning(f"[DUMP_CHANNEL] Failed to copy media for user {user_id}: {copy_error}")
             
-        LOGGER(__name__).info(f"✅ Sent media to dump channel for user {user_id}")
     except Exception as e:
         # Log error but don't interrupt user
-        LOGGER(__name__).debug(f"Dump channel: {e}")
+        LOGGER(__name__).error(f"[DUMP_CHANNEL] Unexpected error: {e}")
 
 # Generate progress args for downloading/uploading (minimal tuple - low RAM)
 def progressArgs(action: str, progress_message, start_time):
