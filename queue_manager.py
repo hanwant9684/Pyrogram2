@@ -1,7 +1,7 @@
 import os
 import asyncio
 from datetime import datetime
-from typing import Dict, Set, Optional, Tuple, Union
+from typing import Dict, Set, List, Optional, Tuple, Union
 from logger import LOGGER
 
 from database_sqlite import db
@@ -17,6 +17,7 @@ class DownloadManager:
         self.active_downloads: Set[int] = set()
         self._active_download_refs: Dict[int, int] = {}
         self.active_tasks: Dict[int, asyncio.Task] = {}
+        self.waiting_queue: List[int] = []  # Track waiting users
         
         self.user_cooldowns: Dict[int, float] = {}
         
@@ -202,6 +203,23 @@ class DownloadManager:
                 f"Download System Status\n"
                 f"-------------------\n"
                 f"Active Downloads: {len(self.active_downloads)}/{self.max_concurrent}"
+            )
+    
+    def get_queue_position(self, user_id: int) -> int:
+        """Get user's position in waiting queue (1-indexed)"""
+        if user_id in self.waiting_queue:
+            return self.waiting_queue.index(user_id) + 1
+        return 0
+    
+    async def get_global_status(self) -> str:
+        """Get global queue status for admins"""
+        async with self._lock:
+            return (
+                f"🤖 **Download System Status**\n"
+                f"━━━━━━━━━━━━━━━━━━━━━━\n\n"
+                f"⚡ **Active:** {len(self.active_downloads)}/{self.max_concurrent}\n"
+                f"⏳ **Waiting:** {len(self.waiting_queue)}\n\n"
+                f"━━━━━━━━━━━━━━━━━━━━━━"
             )
     
     async def cancel_user_download(self, user_id: int) -> Tuple[bool, str]:
