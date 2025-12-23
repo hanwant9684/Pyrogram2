@@ -163,6 +163,7 @@ async def broadcast_command(client, message):
     """Broadcast message/media to all users or specific users
     
     Usage:
+        pass
     - All users: /broadcast <message>
     - Specific users: /broadcast @user_id1,user_id2 <message>
     - Media: Reply to a photo/video/audio/document/GIF with /broadcast [@user_ids] <optional caption>
@@ -347,7 +348,6 @@ async def execute_broadcast(client, admin_id: int, broadcast_data: dict):
             successful_sends += 1
             await asyncio.sleep(0.1)
         except Exception as e:
-            LOGGER(__name__).debug(f"Failed to send broadcast to {user_id}: {e}")
             continue
 
     broadcast_content = broadcast_data.get('message') or broadcast_data.get('caption') or f"[{broadcast_type.upper()} broadcast]"

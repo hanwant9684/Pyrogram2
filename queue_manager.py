@@ -32,7 +32,6 @@ class DownloadManager:
         """
         self.active_downloads.add(user_id)
         self._active_download_refs[user_id] = self._active_download_refs.get(user_id, 0) + 1
-        LOGGER(__name__).debug(f"Active download ref added for user {user_id}: count={self._active_download_refs[user_id]}")
     
     def remove_active_download(self, user_id: int) -> None:
         """
@@ -44,12 +43,10 @@ class DownloadManager:
             if self._active_download_refs[user_id] <= 0:
                 self.active_downloads.discard(user_id)
                 del self._active_download_refs[user_id]
-                LOGGER(__name__).debug(f"Active download removed for user {user_id}: no more refs")
             else:
-                LOGGER(__name__).debug(f"Active download ref removed for user {user_id}: count={self._active_download_refs[user_id]}")
+                pass
         else:
             self.active_downloads.discard(user_id)
-            LOGGER(__name__).debug(f"Active download removed for user {user_id}: was not ref-counted")
     
     async def start_processor(self):
         """No-op for compatibility"""
@@ -118,7 +115,6 @@ class DownloadManager:
             if user_id in session_manager.last_activity:
                 from time import time
                 session_manager.last_activity[user_id] = time()
-                LOGGER(__name__).debug(f"Updated last_activity for user {user_id} at download start")
             
             memory_monitor.log_memory_snapshot("Download Started", f"User {user_id} | Active: {len(self.active_downloads)}", silent=True)
             
@@ -164,7 +160,6 @@ class DownloadManager:
                     f"RAM after cleanup: {after_cleanup:.1f}MB (released: {ram_released:.1f}MB)"
                 )
             except Exception as e:
-                LOGGER(__name__).debug(f"Could not cleanup session after download: {e}")
                 gc.collect()
             
             LOGGER(__name__).info(f"Download completed for user {user_id}. Active: {len(self.active_downloads)}. Session+GC cleanup done.")
@@ -273,9 +268,6 @@ class DownloadManager:
             for user_id in expired_cooldowns:
                 del self.user_cooldowns[user_id]
                 cooldown_cleanup_count += 1
-            
-            if cooldown_cleanup_count > 0:
-                LOGGER(__name__).debug(f"Sweep: cleaned {cooldown_cleanup_count} expired cooldowns")
             
             if task_cleanup_count > 0 or cooldown_cleanup_count > 0:
                 LOGGER(__name__).info(f"Sweep: cleaned {task_cleanup_count} orphaned tasks, {cooldown_cleanup_count} expired cooldowns")

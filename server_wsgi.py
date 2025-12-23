@@ -1255,7 +1255,6 @@ async def periodic_gc_task():
             collected = gc.collect()
             if collected > 0:
                 from logger import LOGGER
-                LOGGER(__name__).debug(f"Garbage collection freed {collected} objects")
                 memory_monitor.log_memory_snapshot("Garbage Collection", f"Freed {collected} objects", silent=True)
         except asyncio.CancelledError:
             from logger import LOGGER
@@ -1268,6 +1267,7 @@ async def periodic_gc_task():
 async def cleanup_watchdog_task():
     """Cleanup watchdog to prevent memory leaks from ad sessions and orphaned downloads.
     Runs every 5 minutes to purge:
+        pass
     1. Expired ad sessions (>30 min old) and their cache entries
     2. Orphaned download tasks that failed to clean up properly
     """
@@ -1338,8 +1338,14 @@ def run_bot():
     
     async def start_bot():
         import sys
+        from pyrogram.errors import FloodWait
+        
         # Initialize background tasks list before try block to avoid UnboundLocalError in finally
         background_tasks = []
+        
+        # Exponential backoff configuration for transient network errors
+        max_transient_retries = 3
+        base_wait = 2  # Start with 2 seconds
         
         try:
             # CRITICAL: Cleanup orphaned files from previous crashes FIRST
@@ -1351,8 +1357,37 @@ def run_bot():
                     f"({bytes_freed / (1024*1024):.1f} MB freed) from previous crashes"
                 )
             
-            main.LOGGER(__name__).info("Starting Telegram bot from server_wsgi.py (long polling)")
-            await main.bot.start()
+            # Bot authentication with exponential backoff for transient errors
+            retry_count = 0
+            while retry_count < max_transient_retries:
+                try:
+                    main.LOGGER(__name__).info("Starting Telegram bot from server_wsgi.py (long polling)")
+                    await main.bot.start()
+                    break  # Success - exit retry loop
+                except FloodWait as fw:
+                    # Fail immediately on FloodWait - don't retry rate limits
+                    main.LOGGER(__name__).error(
+                        f"❌ Telegram rate limit (FloodWait): Need to wait {fw.value}s\n"
+                        f"   This means: Bot token was blocked by Telegram\n"
+                        f"   Solution: Wait {fw.value}s or use a new bot token from @BotFather"
+                    )
+                    raise
+                except (ConnectionError, TimeoutError, OSError) as e:
+                    # Retry on transient network errors with exponential backoff
+                    retry_count += 1
+                    if retry_count >= max_transient_retries:
+                        main.LOGGER(__name__).error(f"❌ Network error after {max_transient_retries} retries: {e}")
+                        raise
+                    wait_time = base_wait * (2 ** (retry_count - 1))  # 2, 4, 8 seconds
+                    main.LOGGER(__name__).warning(
+                        f"⚠️ Transient network error (retry {retry_count}/{max_transient_retries}): {type(e).__name__}\n"
+                        f"   Waiting {wait_time}s before retry..."
+                    )
+                    await asyncio.sleep(wait_time)
+                except Exception as e:
+                    # Fail immediately on other Telegram errors (invalid token, etc)
+                    main.LOGGER(__name__).error(f"❌ Bot authentication failed: {e}")
+                    raise
             
             import time
             main.bot.start_time = time.time()

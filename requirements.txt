@@ -29,3 +29,11 @@ pyrogram
 tgcrypto
 uvloop
 waitress
+cryptg
+flask
+orjson
+psutil
+pyrogram
+tgcrypto
+uvloop
+waitress

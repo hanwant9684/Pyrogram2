@@ -180,7 +180,6 @@ def trigger_backup_on_session(user_id):
     
     with _backup_lock:
         if _backup_in_progress:
-            LOGGER(__name__).debug(f"Backup already in progress, skipping trigger for user {user_id}")
             return False
         
         _backup_in_progress = True
@@ -205,6 +204,7 @@ def trigger_backup_on_critical_change(operation_name, user_id=None):
     Trigger backup when critical database changes occur (non-blocking, thread-safe)
     
     Critical operations that trigger backup:
+        pass
     - add_ad_downloads: User earns ad download credits
     - set_premium: User gets premium subscription
     - set_user_type: User type changes
@@ -221,7 +221,6 @@ def trigger_backup_on_critical_change(operation_name, user_id=None):
     
     with _backup_lock:
         if _backup_in_progress:
-            LOGGER(__name__).debug(f"Backup already in progress, skipping trigger for {operation_name}")
             return False
         
         _backup_in_progress = True
@@ -247,6 +246,7 @@ def restore_from_github(backup_name=None):
     Download and restore database from GitHub
     
     IMPORTANT: When deployed to Render or any service restart:
+        pass
     - This function ALWAYS downloads the NEWEST backup file
     - Backups are sorted by filename (timestamp) in descending order
     - The latest backup is automatically selected
@@ -318,7 +318,6 @@ async def periodic_cloud_backup(interval_minutes=10):
     backup_service = os.getenv("CLOUD_BACKUP_SERVICE", "").lower()
     
     if backup_service != "github":
-        LOGGER(__name__).debug("GitHub backup not enabled")
         return
     
     LOGGER(__name__).info(f"Starting periodic GitHub backups every {interval_minutes} minutes")
@@ -341,7 +340,6 @@ async def restore_latest_from_cloud():
         backup_service = os.getenv("CLOUD_BACKUP_SERVICE", "").lower()
     
     if not backup_service or backup_service != "github":
-        LOGGER(__name__).debug(f"GitHub backup not configured (service: {backup_service})")
         return False
     
     LOGGER(__name__).info("Attempting to restore from GitHub...")
@@ -349,10 +347,7 @@ async def restore_latest_from_cloud():
 
 if __name__ == "__main__":
     print("=" * 60)
-    print("GitHub Backup Utility")
     print("=" * 60)
-    print("\n1. Backup to GitHub")
-    print("2. Restore from GitHub")
     
     choice = input("\nEnter choice (1-2): ").strip()
     

@@ -98,6 +98,7 @@ class PyroConf:
         Supports: Railway, Render, Heroku, VPS, Replit, and custom deployments.
         
         Priority order:
+            pass
         1. APP_URL (custom/manual override)
         2. Railway environment variables
         3. Render environment variables

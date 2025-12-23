@@ -120,7 +120,7 @@ def check_download_limit(func):
                 except asyncio.CancelledError:
                     pass  # Task cancelled during shutdown, ignore
                 except Exception as e:
-                    LOGGER(__name__).debug(f"Could not delete daily limit message: {e}")
+                    pass
             
             # Create task with name for debugging; task auto-cleans when done
             task = asyncio.create_task(delete_after_delay())
@@ -252,7 +252,6 @@ def force_subscribe(func):
                     pass
             except Exception as e:
                 # If get_chat or get_chat_member fails, try to allow access
-                LOGGER(__name__).debug(f"get_chat_member failed: {e}")
                 # Allow access to avoid blocking users on channel check errors
                 return await func(client, message)
                     

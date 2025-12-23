@@ -302,9 +302,7 @@ async def handle_download(bot: Client, message: Message, post_url: str, user_cli
         post_url = post_url.split("?", 1)[0]
 
     try:
-        LOGGER(__name__).debug(f"[DOWNLOAD] Starting download for user {message.from_user.id} with URL: {post_url}")
         chat_id, message_id = getChatMsgID(post_url)
-        LOGGER(__name__).debug(f"[DOWNLOAD] Parsed URL - Chat ID: {chat_id}, Message ID: {message_id}")
 
         # Use user's personal session (required for all users, including admins)
         client_to_use = user_client
@@ -337,12 +335,11 @@ async def handle_download(bot: Client, message: Message, post_url: str, user_cli
         
         # Approach 1: Direct get_chat() call
         try:
-            LOGGER(__name__).debug(f"[DOWNLOAD] Attempting direct get_chat for chat ID {resolved_chat_id}")
             chat_obj = await client_to_use.get_chat(resolved_chat_id)
             chat_found = True
             LOGGER(__name__).info(f"Met peer directly for chat ID {resolved_chat_id}")
         except Exception as e:
-            LOGGER(__name__).debug(f"[DOWNLOAD] Direct get_chat failed for {resolved_chat_id}: {e}")
+            pass
         
         # Approach 2: Search in dialogs if direct access failed (for private channels)
         if not chat_found and isinstance(resolved_chat_id, int):
@@ -354,7 +351,7 @@ async def handle_download(bot: Client, message: Message, post_url: str, user_cli
                         LOGGER(__name__).info(f"Found chat {resolved_chat_id} in dialogs")
                         break
             except Exception as e:
-                LOGGER(__name__).debug(f"Dialog search failed: {e}")
+                pass
         
         # If still not found, show error
         if not chat_found:
@@ -362,12 +359,9 @@ async def handle_download(bot: Client, message: Message, post_url: str, user_cli
             await message.reply(f"**Could not access this channel.**\n\nMake sure:\n• You have permission to access it\n• The channel still exists\n• You've joined the channel if it's private")
             return
 
-        LOGGER(__name__).debug(f"[DOWNLOAD] Fetching message {message_id} from chat {resolved_chat_id}")
         chat_message = await client_to_use.get_messages(chat_id=resolved_chat_id, message_ids=message_id)
-        LOGGER(__name__).debug(f"[DOWNLOAD] Message fetched successfully")
 
         LOGGER(__name__).info(f"Downloading media from URL: {post_url}")
-        LOGGER(__name__).debug(f"[DOWNLOAD] Message type - Document: {chat_message.document}, Video: {chat_message.video}, Audio: {chat_message.audio}, Photo: {chat_message.photo}, Text: {bool(chat_message.text)}, Caption: {bool(chat_message.caption)}")
 
         if chat_message.document or chat_message.video or chat_message.audio:
             file_size = (
@@ -490,14 +484,12 @@ async def handle_download(bot: Client, message: Message, post_url: str, user_cli
                 except:
                     pass
             
-            LOGGER(__name__).debug(f"[DOWNLOAD] Starting media download to path: {download_path}")
             media_path = await download_media_fast(
                 client=client_to_use,
                 message=chat_message,
                 file=download_path,
                 progress_callback=download_progress_callback
             )
-            LOGGER(__name__).debug(f"[DOWNLOAD] Media download completed: {media_path}")
             LOGGER(__name__).info(f"Downloaded media: {media_path}")
 
             try:
@@ -508,6 +500,14 @@ async def handle_download(bot: Client, message: Message, post_url: str, user_cli
                     if chat_message.video
                     else "audio"
                     if chat_message.audio
+                    else "voice"
+                    if chat_message.voice
+                    else "video_note"
+                    if chat_message.video_note
+                    else "animation"
+                    if chat_message.animation
+                    else "sticker"
+                    if chat_message.sticker
                     else "document"
                 )
                 await send_media(
@@ -891,10 +891,8 @@ async def handle_any_message(bot: Client, message: Message):
     if message.text and not message.text.startswith("/"):
         # Skip if message doesn't look like a Telegram URL
         if "t.me/" not in message.text or len(message.text.strip()) < 10:
-            LOGGER(__name__).debug(f"[HANDLER] Message from {message.from_user.id} doesn't look like URL: {message.text[:50]}")
             return
         
-        LOGGER(__name__).debug(f"[HANDLER] Processing message as URL: {message.text}")
         
         # Check if user is premium for queue priority
         is_premium = db.get_user_type(message.from_user.id) in ['premium', 'admin']
@@ -1074,7 +1072,7 @@ async def broadcast_handler(client: Client, message: Message):
 
 @bot.on_message(filters.command("adminstats") & filters.private)
 async def admin_stats_handler(client: Client, message: Message):
-    await admin_stats_command(client, message, queue_manager=download_manager)
+    await admin_stats_command(client, message, download_mgr=download_manager)
 
 @bot.on_message(filters.command("getpremium") & filters.private)
 @register_user
@@ -1146,7 +1144,7 @@ async def get_premium_command(client: Client, message: Message):
                 await asyncio.sleep(60)
                 await sent_msg.delete()
             except Exception as e:
-                LOGGER(__name__).debug(f"Could not delete getpremium message: {e}")
+                pass
         
         asyncio.create_task(delete_after_delay())
         

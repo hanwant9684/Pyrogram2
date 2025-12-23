@@ -93,7 +93,6 @@ class PhoneAuthHandler:
         # This allows users to enter codes like "1 2 3 4 5" or "12345"
         cleaned_code = ''.join(filter(str.isdigit, otp_code))
         
-        LOGGER(__name__).debug(f"OTP verification - code length: {len(cleaned_code)}, code: {cleaned_code}, hash exists: {bool(phone_code_hash)}")
 
         try:
             LOGGER(__name__).info(f"Attempting sign_in for user {user_id}")

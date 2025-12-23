@@ -1,0 +1,338 @@
+[23-Dec-25 10:09:40 AM - INFO] - start_bot_once() - Line 1479: __main__ - Starting Telegram bot in background thread...
+[23-Dec-25 10:10:23 AM - INFO] - start_bot_once() - Line 1479: __main__ - Starting Telegram bot in background thread...
+[23-Dec-25 10:10:23 AM - INFO] - <module>() - Line 1491: __main__ - Starting Waitress WSGI server on 0.0.0.0:5000 (minimal RAM mode)
+[23-Dec-25 10:10:23 AM - INFO] - log_info() - Line 449: waitress - Serving on http://0.0.0.0:5000
+[23-Dec-25 10:10:23 AM - INFO] - __init__() - Line 31: cache - Cache initialized: max_size=100, ttl=120s
+[23-Dec-25 10:10:24 AM - INFO] - _init_database() - Line 123: database_sqlite - Database tables and indexes created successfully
+[23-Dec-25 10:10:24 AM - INFO] - __init__() - Line 24: database_sqlite - Successfully connected to SQLite database: telegram_bot.db
+[23-Dec-25 10:10:24 AM - INFO] - __init__() - Line 16: ad_monetization - Ad Monetization initialized - using Adsterra SmartLink to blog
+[23-Dec-25 10:10:24 AM - INFO] - __init__() - Line 26: queue_manager - Download Manager initialized: 10 concurrent max
+[23-Dec-25 10:10:24 AM - INFO] - start_processor() - Line 56: queue_manager - Download manager ready
+[23-Dec-25 10:10:24 AM - INFO] - _init_queue() - Line 1521: main - Download queue processor initialized
+[23-Dec-25 10:10:24 AM - INFO] - verify_and_log() - Line 62: attribution - Bot initialized - Creator: @Wolfy0046
+[23-Dec-25 10:10:24 AM - INFO] - start_bot() - Line 1354: __main__ - Starting Telegram bot from server_wsgi.py (long polling)
+[23-Dec-25 10:10:31 AM - INFO] - start_bot() - Line 1360: __main__ - Bot started successfully, waiting for updates...
+[23-Dec-25 10:10:31 AM - INFO] - start_cleanup_task() - Line 217: phone_auth - Started auth session cleanup task
+[23-Dec-25 10:10:31 AM - INFO] - start_bot() - Line 1366: __main__ - Started periodic download cleanup task
+[23-Dec-25 10:10:31 AM - INFO] - __init__() - Line 34: helpers.session_manager - Session Manager initialized: max 10 concurrent sessions, 2min idle timeout
+[23-Dec-25 10:10:31 AM - INFO] - start_cleanup_task() - Line 238: helpers.session_manager - Started periodic session cleanup (every 2 minutes)
+[23-Dec-25 10:10:31 AM - INFO] - start_bot() - Line 1370: __main__ - Started periodic session cleanup task (10min idle timeout)
+[23-Dec-25 10:10:31 AM - INFO] - start_bot() - Line 1373: __main__ - Started periodic garbage collection task
+[23-Dec-25 10:10:31 AM - INFO] - start_bot() - Line 1376: __main__ - Started cleanup watchdog task (removes expired ad sessions every 5 min)
+[23-Dec-25 10:10:31 AM - INFO] - start_bot() - Line 1380: __main__ - Started periodic memory monitoring (5-minute intervals)
+[23-Dec-25 10:10:31 AM - INFO] - start_processor() - Line 56: queue_manager - Download manager ready
+[23-Dec-25 10:10:31 AM - INFO] - start_bot() - Line 1385: __main__ - Download manager initialized
+[23-Dec-25 10:10:31 AM - WARNING] - log_memory_snapshot() - Line 137: memory_monitor - ⚠️ Memory spike: +64MB (64MB total) - Bot Startup
+[23-Dec-25 10:10:31 AM - INFO] - start_bot() - Line 1394: __main__ - Cloud backup configured: github
+[23-Dec-25 10:10:31 AM - INFO] - start_bot() - Line 1396: __main__ - Restoring database from GitHub...
+[23-Dec-25 10:10:31 AM - INFO] - restore_latest_from_cloud() - Line 347: cloud_backup - Attempting to restore from GitHub...
+[23-Dec-25 10:10:31 AM - INFO] - _restore_from_temp() - Line 54: cloud_backup - Current database backed up to: telegram_bot.db.before_restore
+[23-Dec-25 10:10:31 AM - INFO] - _restore_from_temp() - Line 57: cloud_backup - ✅ Database restored from: temp_restore.db
+[23-Dec-25 10:10:31 AM - INFO] - restore_from_github() - Line 303: cloud_backup - ✅ Restored from GitHub: backup_20251223_100938.db
+[23-Dec-25 10:10:31 AM - INFO] - start_bot() - Line 1399: __main__ - ✅ Database restored from github
+[23-Dec-25 10:10:31 AM - INFO] - start_bot() - Line 1406: __main__ - Started periodic github backup (every 10 minutes)
+[23-Dec-25 10:10:31 AM - INFO] - start_bot() - Line 1431: __main__ - Started periodic orphaned file cleanup (every 1h)
+[23-Dec-25 10:10:31 AM - INFO] - start_bot() - Line 1433: __main__ - Bot is now running and listening for updates...
+[23-Dec-25 10:10:31 AM - INFO] - periodic_cloud_backup() - Line 324: cloud_backup - Starting periodic GitHub backups every 10 minutes
+[23-Dec-25 10:15:10 AM - INFO] - get_or_create_session() - Line 123: helpers.session_manager - Session verified for user 721236024: authorized as Wolfy0046
+[23-Dec-25 10:15:10 AM - INFO] - get_or_create_session() - Line 132: helpers.session_manager - Created new session for user 721236024 (1/10)
+[23-Dec-25 10:15:10 AM - INFO] - get_user_client() - Line 185: access_control - Got user client for 721236024 from SessionManager
+[23-Dec-25 10:15:12 AM - INFO] - handle_download() - Line 354: main - Found chat -1003042213082 in dialogs
+[23-Dec-25 10:15:12 AM - INFO] - handle_download() - Line 369: main - Downloading media from URL: https://t.me/c/3042213082/10636
+[23-Dec-25 10:15:13 AM - INFO] - download_media_fast() - Line 115: helpers.transfer - Starting download: 10636.jpg (0.0MB)
+[23-Dec-25 10:15:13 AM - INFO] - create_ram_logging_callback() - Line 36: helpers.transfer - [RAM] DOWNLOAD START: 10636.jpg - RAM: 67.4MB
+[23-Dec-25 10:15:14 AM - INFO] - ram_logging_wrapper() - Line 53: helpers.transfer - [RAM] DOWNLOAD 25%: 10636.jpg - RAM: 67.4MB (+0.0MB from start)
+[23-Dec-25 10:15:14 AM - INFO] - ram_logging_wrapper() - Line 53: helpers.transfer - [RAM] DOWNLOAD 50%: 10636.jpg - RAM: 67.4MB (+0.1MB from start)
+[23-Dec-25 10:15:14 AM - INFO] - ram_logging_wrapper() - Line 53: helpers.transfer - [RAM] DOWNLOAD 75%: 10636.jpg - RAM: 67.4MB (+0.1MB from start)
+[23-Dec-25 10:15:14 AM - INFO] - ram_logging_wrapper() - Line 53: helpers.transfer - [RAM] DOWNLOAD 100%: 10636.jpg - RAM: 67.4MB (+0.1MB from start)
+[23-Dec-25 10:15:14 AM - INFO] - download_media_fast() - Line 132: helpers.transfer - [RAM] DOWNLOAD COMPLETE: 10636.jpg - RAM before GC: 67.7MB
+[23-Dec-25 10:15:14 AM - INFO] - download_media_fast() - Line 137: helpers.transfer - [RAM] DOWNLOAD GC: 10636.jpg - RAM after GC: 67.7MB (released: 0.0MB)
+[23-Dec-25 10:15:14 AM - INFO] - handle_download() - Line 501: main - Downloaded media: downloads/2676/10636.jpg
+[23-Dec-25 10:15:14 AM - INFO] - upload_media_fast() - Line 171: helpers.transfer - Starting upload: 10636.jpg (0.0MB)
+[23-Dec-25 10:15:14 AM - INFO] - create_ram_logging_callback() - Line 36: helpers.transfer - [RAM] UPLOAD START: 10636.jpg - RAM: 67.7MB
+[23-Dec-25 10:15:14 AM - INFO] - upload_media_fast() - Line 183: helpers.transfer - [RAM] UPLOAD COMPLETE: 10636.jpg - RAM before GC: 67.7MB
+[23-Dec-25 10:15:14 AM - INFO] - upload_media_fast() - Line 195: helpers.transfer - [RAM] UPLOAD GC: 10636.jpg - RAM after GC: 67.7MB (released: 0.0MB)
+[23-Dec-25 10:15:16 AM - INFO] - forward_to_dump_channel() - Line 556: helpers.utils - [DUMP_CHANNEL] ✅ Media copied to dump channel for user 721236024
+[23-Dec-25 10:15:17 AM - INFO] - cleanup_download() - Line 29: helpers.files - Cleaning Download: downloads/2676/10636.jpg
+[23-Dec-25 10:15:17 AM - INFO] - remove_session() - Line 152: helpers.session_manager - Removed session for user 721236024
+[23-Dec-25 10:15:17 AM - INFO] - _execute_download() - Line 162: queue_manager - [RAM] SESSION CLEANUP: User 721236024 - RAM after cleanup: 68.0MB (released: 0.0MB)
+[23-Dec-25 10:15:17 AM - INFO] - _execute_download() - Line 170: queue_manager - Download completed for user 721236024. Active: 0. Session+GC cleanup done.
+[23-Dec-25 10:15:17 AM - INFO] - _execute_download() - Line 180: queue_manager - Download cooldown set for user 721236024 (admin): 5s until next download allowed
+[23-Dec-25 10:15:31 AM - INFO] - sweep_stale_items() - Line 281: queue_manager - Sweep: cleaned 0 orphaned tasks, 1 expired cooldowns
+[23-Dec-25 10:15:40 AM - INFO] - get_or_create_session() - Line 123: helpers.session_manager - Session verified for user 721236024: authorized as Wolfy0046
+[23-Dec-25 10:15:40 AM - INFO] - get_or_create_session() - Line 132: helpers.session_manager - Created new session for user 721236024 (1/10)
+[23-Dec-25 10:15:40 AM - INFO] - get_user_client() - Line 185: access_control - Got user client for 721236024 from SessionManager
+[23-Dec-25 10:15:41 AM - INFO] - handle_download() - Line 328: main - Resolved username 'Rpsc2ndgradenotes' to chat ID -1001417214831
+[23-Dec-25 10:15:42 AM - INFO] - handle_download() - Line 343: main - Met peer directly for chat ID -1001417214831
+[23-Dec-25 10:15:42 AM - INFO] - handle_download() - Line 369: main - Downloading media from URL: https://t.me/Rpsc2ndgradenotes/10965
+[23-Dec-25 10:15:42 AM - INFO] - download_media_fast() - Line 115: helpers.transfer - Starting download: 10965.jpg (0.4MB)
+[23-Dec-25 10:15:42 AM - INFO] - create_ram_logging_callback() - Line 36: helpers.transfer - [RAM] DOWNLOAD START: 10965.jpg - RAM: 68.0MB
+[23-Dec-25 10:15:45 AM - INFO] - ram_logging_wrapper() - Line 53: helpers.transfer - [RAM] DOWNLOAD 25%: 10965.jpg - RAM: 70.1MB (+2.2MB from start)
+[23-Dec-25 10:15:45 AM - INFO] - ram_logging_wrapper() - Line 53: helpers.transfer - [RAM] DOWNLOAD 50%: 10965.jpg - RAM: 70.1MB (+2.2MB from start)
+[23-Dec-25 10:15:45 AM - INFO] - ram_logging_wrapper() - Line 53: helpers.transfer - [RAM] DOWNLOAD 75%: 10965.jpg - RAM: 70.1MB (+2.2MB from start)
+[23-Dec-25 10:15:45 AM - INFO] - ram_logging_wrapper() - Line 53: helpers.transfer - [RAM] DOWNLOAD 100%: 10965.jpg - RAM: 70.1MB (+2.2MB from start)
+[23-Dec-25 10:15:45 AM - INFO] - download_media_fast() - Line 132: helpers.transfer - [RAM] DOWNLOAD COMPLETE: 10965.jpg - RAM before GC: 69.1MB
+[23-Dec-25 10:15:45 AM - INFO] - download_media_fast() - Line 137: helpers.transfer - [RAM] DOWNLOAD GC: 10965.jpg - RAM after GC: 69.1MB (released: 0.0MB)
+[23-Dec-25 10:15:45 AM - INFO] - handle_download() - Line 501: main - Downloaded media: downloads/2680/10965.jpg
+[23-Dec-25 10:15:45 AM - INFO] - upload_media_fast() - Line 171: helpers.transfer - Starting upload: 10965.jpg (0.4MB)
+[23-Dec-25 10:15:45 AM - INFO] - create_ram_logging_callback() - Line 36: helpers.transfer - [RAM] UPLOAD START: 10965.jpg - RAM: 69.1MB
+[23-Dec-25 10:15:45 AM - INFO] - upload_media_fast() - Line 183: helpers.transfer - [RAM] UPLOAD COMPLETE: 10965.jpg - RAM before GC: 69.1MB
+[23-Dec-25 10:15:45 AM - INFO] - upload_media_fast() - Line 195: helpers.transfer - [RAM] UPLOAD GC: 10965.jpg - RAM after GC: 69.1MB (released: 0.0MB)
+[23-Dec-25 10:15:48 AM - INFO] - forward_to_dump_channel() - Line 556: helpers.utils - [DUMP_CHANNEL] ✅ Media copied to dump channel for user 721236024
+[23-Dec-25 10:15:49 AM - INFO] - cleanup_download() - Line 29: helpers.files - Cleaning Download: downloads/2680/10965.jpg
+[23-Dec-25 10:15:49 AM - INFO] - remove_session() - Line 152: helpers.session_manager - Removed session for user 721236024
+[23-Dec-25 10:15:49 AM - INFO] - _execute_download() - Line 162: queue_manager - [RAM] SESSION CLEANUP: User 721236024 - RAM after cleanup: 68.2MB (released: 0.0MB)
+[23-Dec-25 10:15:49 AM - INFO] - _execute_download() - Line 170: queue_manager - Download completed for user 721236024. Active: 0. Session+GC cleanup done.
+[23-Dec-25 10:15:49 AM - INFO] - _execute_download() - Line 180: queue_manager - Download cooldown set for user 721236024 (admin): 5s until next download allowed
+[23-Dec-25 10:15:57 AM - INFO] - start_bot_once() - Line 1479: __main__ - Starting Telegram bot in background thread...
+[23-Dec-25 10:15:57 AM - INFO] - <module>() - Line 1491: __main__ - Starting Waitress WSGI server on 0.0.0.0:5000 (minimal RAM mode)
+[23-Dec-25 10:17:14 AM - INFO] - start_bot_once() - Line 1478: __main__ - Starting Telegram bot in background thread...
+[23-Dec-25 10:17:14 AM - INFO] - <module>() - Line 1490: __main__ - Starting Waitress WSGI server on 0.0.0.0:5000 (minimal RAM mode)
+[23-Dec-25 10:17:14 AM - INFO] - log_info() - Line 449: waitress - Serving on http://0.0.0.0:5000
+[23-Dec-25 10:17:39 AM - INFO] - start_bot_once() - Line 1478: __main__ - Starting Telegram bot in background thread...
+[23-Dec-25 10:17:39 AM - INFO] - <module>() - Line 1490: __main__ - Starting Waitress WSGI server on 0.0.0.0:5000 (minimal RAM mode)
+[23-Dec-25 10:17:39 AM - INFO] - log_info() - Line 449: waitress - Serving on http://0.0.0.0:5000
+[23-Dec-25 10:17:51 AM - INFO] - start_bot_once() - Line 1478: __main__ - Starting Telegram bot in background thread...
+[23-Dec-25 10:17:51 AM - INFO] - <module>() - Line 1490: __main__ - Starting Waitress WSGI server on 0.0.0.0:5000 (minimal RAM mode)
+[23-Dec-25 10:17:51 AM - INFO] - log_info() - Line 449: waitress - Serving on http://0.0.0.0:5000
+[23-Dec-25 10:18:03 AM - INFO] - start_bot_once() - Line 1478: __main__ - Starting Telegram bot in background thread...
+[23-Dec-25 10:18:03 AM - INFO] - <module>() - Line 1490: __main__ - Starting Waitress WSGI server on 0.0.0.0:5000 (minimal RAM mode)
+[23-Dec-25 10:18:03 AM - INFO] - log_info() - Line 449: waitress - Serving on http://0.0.0.0:5000
+[23-Dec-25 10:18:17 AM - INFO] - start_bot_once() - Line 1478: __main__ - Starting Telegram bot in background thread...
+[23-Dec-25 10:18:17 AM - INFO] - <module>() - Line 1490: __main__ - Starting Waitress WSGI server on 0.0.0.0:5000 (minimal RAM mode)
+[23-Dec-25 10:18:17 AM - INFO] - log_info() - Line 449: waitress - Serving on http://0.0.0.0:5000
+[23-Dec-25 10:18:28 AM - INFO] - start_bot_once() - Line 1478: __main__ - Starting Telegram bot in background thread...
+[23-Dec-25 10:18:28 AM - INFO] - <module>() - Line 1490: __main__ - Starting Waitress WSGI server on 0.0.0.0:5000 (minimal RAM mode)
+[23-Dec-25 10:18:28 AM - INFO] - log_info() - Line 449: waitress - Serving on http://0.0.0.0:5000
+[23-Dec-25 10:18:40 AM - INFO] - start_bot_once() - Line 1479: __main__ - Starting Telegram bot in background thread...
+[23-Dec-25 10:18:40 AM - INFO] - <module>() - Line 1491: __main__ - Starting Waitress WSGI server on 0.0.0.0:5000 (minimal RAM mode)
+[23-Dec-25 10:18:40 AM - INFO] - log_info() - Line 449: waitress - Serving on http://0.0.0.0:5000
+[23-Dec-25 10:19:03 AM - INFO] - start_bot_once() - Line 1479: __main__ - Starting Telegram bot in background thread...
+[23-Dec-25 10:19:03 AM - INFO] - <module>() - Line 1491: __main__ - Starting Waitress WSGI server on 0.0.0.0:5000 (minimal RAM mode)
+[23-Dec-25 10:19:03 AM - INFO] - log_info() - Line 449: waitress - Serving on http://0.0.0.0:5000
+[23-Dec-25 10:19:06 AM - INFO] - start_bot_once() - Line 1479: __main__ - Starting Telegram bot in background thread...
+[23-Dec-25 10:19:06 AM - INFO] - <module>() - Line 1491: __main__ - Starting Waitress WSGI server on 0.0.0.0:5000 (minimal RAM mode)
+[23-Dec-25 10:19:06 AM - INFO] - log_info() - Line 449: waitress - Serving on http://0.0.0.0:5000
+[23-Dec-25 10:19:46 AM - INFO] - start_bot_once() - Line 1479: __main__ - Starting Telegram bot in background thread...
+[23-Dec-25 10:19:46 AM - INFO] - <module>() - Line 1491: __main__ - Starting Waitress WSGI server on 0.0.0.0:5000 (minimal RAM mode)
+[23-Dec-25 10:19:46 AM - INFO] - log_info() - Line 449: waitress - Serving on http://0.0.0.0:5000
+[23-Dec-25 10:19:58 AM - INFO] - start_bot_once() - Line 1479: __main__ - Starting Telegram bot in background thread...
+[23-Dec-25 10:19:58 AM - INFO] - <module>() - Line 1491: __main__ - Starting Waitress WSGI server on 0.0.0.0:5000 (minimal RAM mode)
+[23-Dec-25 10:19:58 AM - INFO] - log_info() - Line 449: waitress - Serving on http://0.0.0.0:5000
+[23-Dec-25 10:19:59 AM - INFO] - __init__() - Line 31: cache - Cache initialized: max_size=100, ttl=120s
+[23-Dec-25 10:19:59 AM - INFO] - _init_database() - Line 123: database_sqlite - Database tables and indexes created successfully
+[23-Dec-25 10:19:59 AM - INFO] - __init__() - Line 24: database_sqlite - Successfully connected to SQLite database: telegram_bot.db
+[23-Dec-25 10:19:59 AM - INFO] - __init__() - Line 16: ad_monetization - Ad Monetization initialized - using Adsterra SmartLink to blog
+[23-Dec-25 10:20:18 AM - INFO] - start_bot_once() - Line 1479: __main__ - Starting Telegram bot in background thread...
+[23-Dec-25 10:20:18 AM - INFO] - <module>() - Line 1491: __main__ - Starting Waitress WSGI server on 0.0.0.0:5000 (minimal RAM mode)
+[23-Dec-25 10:20:18 AM - INFO] - log_info() - Line 449: waitress - Serving on http://0.0.0.0:5000
+[23-Dec-25 10:20:18 AM - INFO] - __init__() - Line 31: cache - Cache initialized: max_size=100, ttl=120s
+[23-Dec-25 10:20:18 AM - INFO] - _init_database() - Line 123: database_sqlite - Database tables and indexes created successfully
+[23-Dec-25 10:20:18 AM - INFO] - __init__() - Line 24: database_sqlite - Successfully connected to SQLite database: telegram_bot.db
+[23-Dec-25 10:20:18 AM - INFO] - __init__() - Line 16: ad_monetization - Ad Monetization initialized - using Adsterra SmartLink to blog
+[23-Dec-25 10:20:36 AM - INFO] - start_bot_once() - Line 1479: __main__ - Starting Telegram bot in background thread...
+[23-Dec-25 10:20:36 AM - INFO] - <module>() - Line 1491: __main__ - Starting Waitress WSGI server on 0.0.0.0:5000 (minimal RAM mode)
+[23-Dec-25 10:20:36 AM - INFO] - log_info() - Line 449: waitress - Serving on http://0.0.0.0:5000
+[23-Dec-25 10:20:37 AM - INFO] - __init__() - Line 31: cache - Cache initialized: max_size=100, ttl=120s
+[23-Dec-25 10:20:37 AM - INFO] - _init_database() - Line 123: database_sqlite - Database tables and indexes created successfully
+[23-Dec-25 10:20:37 AM - INFO] - __init__() - Line 24: database_sqlite - Successfully connected to SQLite database: telegram_bot.db
+[23-Dec-25 10:20:37 AM - INFO] - __init__() - Line 16: ad_monetization - Ad Monetization initialized - using Adsterra SmartLink to blog
+[23-Dec-25 10:20:37 AM - INFO] - __init__() - Line 26: queue_manager - Download Manager initialized: 10 concurrent max
+[23-Dec-25 10:20:37 AM - INFO] - start_processor() - Line 53: queue_manager - Download manager ready
+[23-Dec-25 10:20:37 AM - INFO] - _init_queue() - Line 1511: main - Download queue processor initialized
+[23-Dec-25 10:20:37 AM - INFO] - verify_and_log() - Line 62: attribution - Bot initialized - Creator: @Wolfy0046
+[23-Dec-25 10:20:37 AM - INFO] - start_bot() - Line 1354: __main__ - Starting Telegram bot from server_wsgi.py (long polling)
+[23-Dec-25 10:20:44 AM - INFO] - start_bot() - Line 1360: __main__ - Bot started successfully, waiting for updates...
+[23-Dec-25 10:20:44 AM - INFO] - start_cleanup_task() - Line 216: phone_auth - Started auth session cleanup task
+[23-Dec-25 10:20:44 AM - INFO] - start_bot() - Line 1366: __main__ - Started periodic download cleanup task
+[23-Dec-25 10:20:44 AM - INFO] - __init__() - Line 34: helpers.session_manager - Session Manager initialized: max 10 concurrent sessions, 2min idle timeout
+[23-Dec-25 10:20:44 AM - INFO] - start_cleanup_task() - Line 236: helpers.session_manager - Started periodic session cleanup (every 2 minutes)
+[23-Dec-25 10:20:44 AM - INFO] - start_bot() - Line 1370: __main__ - Started periodic session cleanup task (10min idle timeout)
+[23-Dec-25 10:20:44 AM - INFO] - start_bot() - Line 1373: __main__ - Started periodic garbage collection task
+[23-Dec-25 10:20:44 AM - INFO] - start_bot() - Line 1376: __main__ - Started cleanup watchdog task (removes expired ad sessions every 5 min)
+[23-Dec-25 10:20:44 AM - INFO] - start_bot() - Line 1380: __main__ - Started periodic memory monitoring (5-minute intervals)
+[23-Dec-25 10:20:44 AM - INFO] - start_processor() - Line 53: queue_manager - Download manager ready
+[23-Dec-25 10:20:44 AM - INFO] - start_bot() - Line 1385: __main__ - Download manager initialized
+[23-Dec-25 10:20:44 AM - WARNING] - log_memory_snapshot() - Line 137: memory_monitor - ⚠️ Memory spike: +63MB (63MB total) - Bot Startup
+[23-Dec-25 10:20:44 AM - INFO] - start_bot() - Line 1394: __main__ - Cloud backup configured: github
+[23-Dec-25 10:20:44 AM - INFO] - start_bot() - Line 1396: __main__ - Restoring database from GitHub...
+[23-Dec-25 10:20:44 AM - INFO] - restore_latest_from_cloud() - Line 345: cloud_backup - Attempting to restore from GitHub...
+[23-Dec-25 10:20:44 AM - INFO] - _restore_from_temp() - Line 54: cloud_backup - Current database backed up to: telegram_bot.db.before_restore
+[23-Dec-25 10:20:44 AM - INFO] - _restore_from_temp() - Line 57: cloud_backup - ✅ Database restored from: temp_restore.db
+[23-Dec-25 10:20:44 AM - INFO] - restore_from_github() - Line 303: cloud_backup - ✅ Restored from GitHub: backup_20251223_100938.db
+[23-Dec-25 10:20:44 AM - INFO] - start_bot() - Line 1399: __main__ - ✅ Database restored from github
+[23-Dec-25 10:20:44 AM - INFO] - start_bot() - Line 1406: __main__ - Started periodic github backup (every 10 minutes)
+[23-Dec-25 10:20:44 AM - INFO] - start_bot() - Line 1431: __main__ - Started periodic orphaned file cleanup (every 1h)
+[23-Dec-25 10:20:44 AM - INFO] - start_bot() - Line 1433: __main__ - Bot is now running and listening for updates...
+[23-Dec-25 10:20:44 AM - INFO] - periodic_cloud_backup() - Line 323: cloud_backup - Starting periodic GitHub backups every 10 minutes
+[23-Dec-25 10:22:07 AM - INFO] - verify_and_log() - Line 62: attribution - Bot initialized - Creator: @Wolfy0046
+[23-Dec-25 10:22:17 AM - INFO] - get_premium_command() - Line 1073: main - get_premium_command triggered by user 721236024
+[23-Dec-25 10:22:17 AM - INFO] - get_app_url() - Line 159: config - Detected Replit domain: https://d1e5d514-ded2-4d5d-a164-d5bc02d0d329-00-2nlffybknup4f.riker.replit.dev
+[23-Dec-25 10:22:17 AM - INFO] - create_ad_session() - Line 23: ad_monetization - Created ad session 70ccbf76d73a7108e60d8ff8ded06a54 for user 721236024
+[23-Dec-25 10:22:17 AM - INFO] - generate_ad_link() - Line 102: ad_monetization - User 721236024: Sending to blog homepage for ad verification - app_url: https://d1e5d514-ded2-4d5d-a164-d5bc02d0d329-00-2nlffybknup4f.riker.replit.dev
+[23-Dec-25 10:22:17 AM - INFO] - get_premium_command() - Line 1131: main - User 721236024 requested ad-based premium
+[23-Dec-25 10:22:41 AM - ERROR] - handler_worker() - Line 253: pyrogram.dispatcher - admin_stats_command() got an unexpected keyword argument 'queue_manager'
+Traceback (most recent call last):
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/pyrogram/dispatcher.py", line 240, in handler_worker
+    await handler.callback(self.client, *args)
+  File "/home/runner/workspace/main.py", line 1067, in admin_stats_handler
+    await admin_stats_command(client, message, queue_manager=download_manager)
+  File "/home/runner/workspace/access_control.py", line 63, in wrapper
+    return await func(client, message, *args, **kwargs)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: admin_stats_command() got an unexpected keyword argument 'queue_manager'
+[23-Dec-25 10:23:20 AM - INFO] - start_bot_once() - Line 1479: __main__ - Starting Telegram bot in background thread...
+[23-Dec-25 10:23:20 AM - INFO] - <module>() - Line 1491: __main__ - Starting Waitress WSGI server on 0.0.0.0:5000 (minimal RAM mode)
+[23-Dec-25 10:24:35 AM - INFO] - start_bot_once() - Line 1479: __main__ - Starting Telegram bot in background thread...
+[23-Dec-25 10:24:35 AM - INFO] - <module>() - Line 1491: __main__ - Starting Waitress WSGI server on 0.0.0.0:5000 (minimal RAM mode)
+[23-Dec-25 10:24:35 AM - INFO] - log_info() - Line 449: waitress - Serving on http://0.0.0.0:5000
+[23-Dec-25 10:24:35 AM - INFO] - __init__() - Line 31: cache - Cache initialized: max_size=100, ttl=120s
+[23-Dec-25 10:24:35 AM - INFO] - _init_database() - Line 123: database_sqlite - Database tables and indexes created successfully
+[23-Dec-25 10:24:35 AM - INFO] - __init__() - Line 24: database_sqlite - Successfully connected to SQLite database: telegram_bot.db
+[23-Dec-25 10:24:35 AM - INFO] - __init__() - Line 16: ad_monetization - Ad Monetization initialized - using Adsterra SmartLink to blog
+[23-Dec-25 10:24:35 AM - INFO] - __init__() - Line 26: queue_manager - Download Manager initialized: 10 concurrent max
+[23-Dec-25 10:24:35 AM - INFO] - verify_and_log() - Line 62: attribution - Bot initialized - Creator: @Wolfy0046
+[23-Dec-25 10:24:35 AM - INFO] - start_processor() - Line 53: queue_manager - Download manager ready
+[23-Dec-25 10:24:35 AM - INFO] - _init_queue() - Line 1511: main - Download queue processor initialized
+[23-Dec-25 10:24:35 AM - INFO] - start_bot() - Line 1354: __main__ - Starting Telegram bot from server_wsgi.py (long polling)
+[23-Dec-25 10:24:42 AM - INFO] - start_bot() - Line 1360: __main__ - Bot started successfully, waiting for updates...
+[23-Dec-25 10:24:42 AM - INFO] - start_cleanup_task() - Line 216: phone_auth - Started auth session cleanup task
+[23-Dec-25 10:24:42 AM - INFO] - start_bot() - Line 1366: __main__ - Started periodic download cleanup task
+[23-Dec-25 10:24:42 AM - INFO] - __init__() - Line 34: helpers.session_manager - Session Manager initialized: max 10 concurrent sessions, 2min idle timeout
+[23-Dec-25 10:24:42 AM - INFO] - start_cleanup_task() - Line 236: helpers.session_manager - Started periodic session cleanup (every 2 minutes)
+[23-Dec-25 10:24:42 AM - INFO] - start_bot() - Line 1370: __main__ - Started periodic session cleanup task (10min idle timeout)
+[23-Dec-25 10:24:42 AM - INFO] - start_bot() - Line 1373: __main__ - Started periodic garbage collection task
+[23-Dec-25 10:24:42 AM - INFO] - start_bot() - Line 1376: __main__ - Started cleanup watchdog task (removes expired ad sessions every 5 min)
+[23-Dec-25 10:24:42 AM - INFO] - start_bot() - Line 1380: __main__ - Started periodic memory monitoring (5-minute intervals)
+[23-Dec-25 10:24:42 AM - INFO] - start_processor() - Line 53: queue_manager - Download manager ready
+[23-Dec-25 10:24:42 AM - INFO] - start_bot() - Line 1385: __main__ - Download manager initialized
+[23-Dec-25 10:24:42 AM - WARNING] - log_memory_snapshot() - Line 137: memory_monitor - ⚠️ Memory spike: +62MB (62MB total) - Bot Startup
+[23-Dec-25 10:24:42 AM - INFO] - start_bot() - Line 1394: __main__ - Cloud backup configured: github
+[23-Dec-25 10:24:42 AM - INFO] - start_bot() - Line 1396: __main__ - Restoring database from GitHub...
+[23-Dec-25 10:24:42 AM - INFO] - restore_latest_from_cloud() - Line 345: cloud_backup - Attempting to restore from GitHub...
+[23-Dec-25 10:24:42 AM - INFO] - _restore_from_temp() - Line 54: cloud_backup - Current database backed up to: telegram_bot.db.before_restore
+[23-Dec-25 10:24:42 AM - INFO] - _restore_from_temp() - Line 57: cloud_backup - ✅ Database restored from: temp_restore.db
+[23-Dec-25 10:24:42 AM - INFO] - restore_from_github() - Line 303: cloud_backup - ✅ Restored from GitHub: backup_20251223_100938.db
+[23-Dec-25 10:24:42 AM - INFO] - start_bot() - Line 1399: __main__ - ✅ Database restored from github
+[23-Dec-25 10:24:42 AM - INFO] - start_bot() - Line 1406: __main__ - Started periodic github backup (every 10 minutes)
+[23-Dec-25 10:24:42 AM - INFO] - start_bot() - Line 1431: __main__ - Started periodic orphaned file cleanup (every 1h)
+[23-Dec-25 10:24:42 AM - INFO] - start_bot() - Line 1433: __main__ - Bot is now running and listening for updates...
+[23-Dec-25 10:24:42 AM - INFO] - periodic_cloud_backup() - Line 323: cloud_backup - Starting periodic GitHub backups every 10 minutes
+[23-Dec-25 10:25:00 AM - INFO] - start_bot_once() - Line 1479: __main__ - Starting Telegram bot in background thread...
+[23-Dec-25 10:25:00 AM - INFO] - <module>() - Line 1491: __main__ - Starting Waitress WSGI server on 0.0.0.0:5000 (minimal RAM mode)
+[23-Dec-25 10:25:00 AM - INFO] - log_info() - Line 449: waitress - Serving on http://0.0.0.0:5000
+[23-Dec-25 10:25:01 AM - INFO] - __init__() - Line 31: cache - Cache initialized: max_size=100, ttl=120s
+[23-Dec-25 10:25:01 AM - INFO] - _init_database() - Line 123: database_sqlite - Database tables and indexes created successfully
+[23-Dec-25 10:25:01 AM - INFO] - __init__() - Line 24: database_sqlite - Successfully connected to SQLite database: telegram_bot.db
+[23-Dec-25 10:25:01 AM - INFO] - __init__() - Line 16: ad_monetization - Ad Monetization initialized - using Adsterra SmartLink to blog
+[23-Dec-25 10:25:01 AM - INFO] - __init__() - Line 26: queue_manager - Download Manager initialized: 10 concurrent max
+[23-Dec-25 10:25:01 AM - INFO] - verify_and_log() - Line 62: attribution - Bot initialized - Creator: @Wolfy0046
+[23-Dec-25 10:25:01 AM - INFO] - start_processor() - Line 53: queue_manager - Download manager ready
+[23-Dec-25 10:25:01 AM - INFO] - _init_queue() - Line 1511: main - Download queue processor initialized
+[23-Dec-25 10:25:01 AM - INFO] - start_bot() - Line 1354: __main__ - Starting Telegram bot from server_wsgi.py (long polling)
+[23-Dec-25 10:25:07 AM - INFO] - start_bot() - Line 1360: __main__ - Bot started successfully, waiting for updates...
+[23-Dec-25 10:25:07 AM - INFO] - start_cleanup_task() - Line 216: phone_auth - Started auth session cleanup task
+[23-Dec-25 10:25:07 AM - INFO] - start_bot() - Line 1366: __main__ - Started periodic download cleanup task
+[23-Dec-25 10:25:07 AM - INFO] - __init__() - Line 34: helpers.session_manager - Session Manager initialized: max 10 concurrent sessions, 2min idle timeout
+[23-Dec-25 10:25:07 AM - INFO] - start_cleanup_task() - Line 236: helpers.session_manager - Started periodic session cleanup (every 2 minutes)
+[23-Dec-25 10:25:07 AM - INFO] - start_bot() - Line 1370: __main__ - Started periodic session cleanup task (10min idle timeout)
+[23-Dec-25 10:25:07 AM - INFO] - start_bot() - Line 1373: __main__ - Started periodic garbage collection task
+[23-Dec-25 10:25:07 AM - INFO] - start_bot() - Line 1376: __main__ - Started cleanup watchdog task (removes expired ad sessions every 5 min)
+[23-Dec-25 10:25:07 AM - INFO] - start_bot() - Line 1380: __main__ - Started periodic memory monitoring (5-minute intervals)
+[23-Dec-25 10:25:07 AM - INFO] - start_processor() - Line 53: queue_manager - Download manager ready
+[23-Dec-25 10:25:07 AM - INFO] - start_bot() - Line 1385: __main__ - Download manager initialized
+[23-Dec-25 10:25:07 AM - WARNING] - log_memory_snapshot() - Line 137: memory_monitor - ⚠️ Memory spike: +62MB (62MB total) - Bot Startup
+[23-Dec-25 10:25:07 AM - INFO] - start_bot() - Line 1394: __main__ - Cloud backup configured: github
+[23-Dec-25 10:25:07 AM - INFO] - start_bot() - Line 1396: __main__ - Restoring database from GitHub...
+[23-Dec-25 10:25:07 AM - INFO] - restore_latest_from_cloud() - Line 345: cloud_backup - Attempting to restore from GitHub...
+[23-Dec-25 10:25:07 AM - INFO] - _restore_from_temp() - Line 54: cloud_backup - Current database backed up to: telegram_bot.db.before_restore
+[23-Dec-25 10:25:07 AM - INFO] - _restore_from_temp() - Line 57: cloud_backup - ✅ Database restored from: temp_restore.db
+[23-Dec-25 10:25:07 AM - INFO] - restore_from_github() - Line 303: cloud_backup - ✅ Restored from GitHub: backup_20251223_100938.db
+[23-Dec-25 10:25:07 AM - INFO] - start_bot() - Line 1399: __main__ - ✅ Database restored from github
+[23-Dec-25 10:25:07 AM - INFO] - start_bot() - Line 1406: __main__ - Started periodic github backup (every 10 minutes)
+[23-Dec-25 10:25:07 AM - INFO] - start_bot() - Line 1431: __main__ - Started periodic orphaned file cleanup (every 1h)
+[23-Dec-25 10:25:07 AM - INFO] - start_bot() - Line 1433: __main__ - Bot is now running and listening for updates...
+[23-Dec-25 10:25:07 AM - INFO] - periodic_cloud_backup() - Line 323: cloud_backup - Starting periodic GitHub backups every 10 minutes
+[23-Dec-25 10:25:28 AM - INFO] - cancel_all_downloads() - Line 245: queue_manager - Cancelled all downloads: 0 total
+[23-Dec-25 10:25:40 AM - INFO] - start_bot_once() - Line 1479: __main__ - Starting Telegram bot in background thread...
+[23-Dec-25 10:25:40 AM - INFO] - <module>() - Line 1491: __main__ - Starting Waitress WSGI server on 0.0.0.0:5000 (minimal RAM mode)
+[23-Dec-25 10:26:35 AM - INFO] - start_bot_once() - Line 1479: __main__ - Starting Telegram bot in background thread...
+[23-Dec-25 10:26:35 AM - INFO] - <module>() - Line 1491: __main__ - Starting Waitress WSGI server on 0.0.0.0:5000 (minimal RAM mode)
+[23-Dec-25 10:26:35 AM - INFO] - log_info() - Line 449: waitress - Serving on http://0.0.0.0:5000
+[23-Dec-25 10:26:35 AM - INFO] - __init__() - Line 31: cache - Cache initialized: max_size=100, ttl=120s
+[23-Dec-25 10:26:35 AM - INFO] - _init_database() - Line 123: database_sqlite - Database tables and indexes created successfully
+[23-Dec-25 10:26:35 AM - INFO] - __init__() - Line 24: database_sqlite - Successfully connected to SQLite database: telegram_bot.db
+[23-Dec-25 10:26:35 AM - INFO] - __init__() - Line 16: ad_monetization - Ad Monetization initialized - using Adsterra SmartLink to blog
+[23-Dec-25 10:26:35 AM - INFO] - __init__() - Line 26: queue_manager - Download Manager initialized: 10 concurrent max
+[23-Dec-25 10:26:35 AM - INFO] - start_processor() - Line 53: queue_manager - Download manager ready
+[23-Dec-25 10:26:35 AM - INFO] - _init_queue() - Line 1519: main - Download queue processor initialized
+[23-Dec-25 10:26:35 AM - INFO] - verify_and_log() - Line 62: attribution - Bot initialized - Creator: @Wolfy0046
+[23-Dec-25 10:26:35 AM - INFO] - start_bot() - Line 1354: __main__ - Starting Telegram bot from server_wsgi.py (long polling)
+[23-Dec-25 10:26:38 AM - INFO] - start_bot() - Line 1437: __main__ - Bot shutting down gracefully...
+[23-Dec-25 10:26:38 AM - INFO] - __init__() - Line 34: helpers.session_manager - Session Manager initialized: max 10 concurrent sessions, 2min idle timeout
+[23-Dec-25 10:26:38 AM - INFO] - disconnect_all() - Line 166: helpers.session_manager - All sessions disconnected
+[23-Dec-25 10:26:38 AM - INFO] - start_bot() - Line 1443: __main__ - Disconnected all user sessions
+[23-Dec-25 10:26:38 AM - ERROR] - start_bot() - Line 1451: __main__ - Error disconnecting bot: Client is already disconnected
+[23-Dec-25 10:26:38 AM - INFO] - start_bot() - Line 1466: __main__ - Bot stopped
+[23-Dec-25 10:27:49 AM - INFO] - start_bot_once() - Line 1504: __main__ - Starting Telegram bot in background thread...
+[23-Dec-25 10:27:49 AM - INFO] - <module>() - Line 1516: __main__ - Starting Waitress WSGI server on 0.0.0.0:5000 (minimal RAM mode)
+[23-Dec-25 10:27:49 AM - INFO] - log_info() - Line 449: waitress - Serving on http://0.0.0.0:5000
+[23-Dec-25 10:27:49 AM - INFO] - __init__() - Line 31: cache - Cache initialized: max_size=100, ttl=120s
+[23-Dec-25 10:27:49 AM - INFO] - _init_database() - Line 123: database_sqlite - Database tables and indexes created successfully
+[23-Dec-25 10:27:49 AM - INFO] - __init__() - Line 24: database_sqlite - Successfully connected to SQLite database: telegram_bot.db
+[23-Dec-25 10:27:49 AM - INFO] - __init__() - Line 16: ad_monetization - Ad Monetization initialized - using Adsterra SmartLink to blog
+[23-Dec-25 10:27:49 AM - INFO] - __init__() - Line 26: queue_manager - Download Manager initialized: 10 concurrent max
+[23-Dec-25 10:27:49 AM - INFO] - start_processor() - Line 53: queue_manager - Download manager ready
+[23-Dec-25 10:27:49 AM - INFO] - verify_and_log() - Line 62: attribution - Bot initialized - Creator: @Wolfy0046
+[23-Dec-25 10:27:49 AM - INFO] - _init_queue() - Line 1519: main - Download queue processor initialized
+[23-Dec-25 10:27:49 AM - INFO] - start_bot() - Line 1362: __main__ - Starting Telegram bot from server_wsgi.py (long polling)
+[23-Dec-25 10:27:52 AM - WARNING] - start_bot() - Line 1368: __main__ - ⏳ Telegram FloodWait: Need to wait 1322s (retry 1/5)
+[23-Dec-25 10:27:52 AM - INFO] - start_bot() - Line 1374: __main__ - Waiting 1322s before retrying...
+[23-Dec-25 10:29:34 AM - INFO] - __init__() - Line 31: cache - Cache initialized: max_size=100, ttl=120s
+[23-Dec-25 10:29:34 AM - INFO] - _init_database() - Line 123: database_sqlite - Database tables and indexes created successfully
+[23-Dec-25 10:29:34 AM - INFO] - __init__() - Line 24: database_sqlite - Successfully connected to SQLite database: telegram_bot.db
+[23-Dec-25 10:29:34 AM - INFO] - __init__() - Line 16: ad_monetization - Ad Monetization initialized - using Adsterra SmartLink to blog
+[23-Dec-25 10:29:34 AM - INFO] - __init__() - Line 26: queue_manager - Download Manager initialized: 10 concurrent max
+[23-Dec-25 10:29:34 AM - INFO] - verify_and_log() - Line 62: attribution - Bot initialized - Creator: @Wolfy0046
+[23-Dec-25 10:29:34 AM - INFO] - start_processor() - Line 53: queue_manager - Download manager ready
+[23-Dec-25 10:32:37 AM - INFO] - start_bot_once() - Line 1480: __main__ - Starting Telegram bot in background thread...
+[23-Dec-25 10:32:37 AM - INFO] - <module>() - Line 1492: __main__ - Starting Waitress WSGI server on 0.0.0.0:5000 (minimal RAM mode)
+[23-Dec-25 10:32:37 AM - INFO] - log_info() - Line 449: waitress - Serving on http://0.0.0.0:5000
+[23-Dec-25 10:32:38 AM - INFO] - __init__() - Line 31: cache - Cache initialized: max_size=100, ttl=120s
+[23-Dec-25 10:32:38 AM - INFO] - _init_database() - Line 123: database_sqlite - Database tables and indexes created successfully
+[23-Dec-25 10:32:38 AM - INFO] - __init__() - Line 24: database_sqlite - Successfully connected to SQLite database: telegram_bot.db
+[23-Dec-25 10:32:38 AM - INFO] - __init__() - Line 16: ad_monetization - Ad Monetization initialized - using Adsterra SmartLink to blog
+[23-Dec-25 10:32:38 AM - INFO] - __init__() - Line 26: queue_manager - Download Manager initialized: 10 concurrent max
+[23-Dec-25 10:32:38 AM - INFO] - start_processor() - Line 53: queue_manager - Download manager ready
+[23-Dec-25 10:32:38 AM - INFO] - _init_queue() - Line 1519: main - Download queue processor initialized
+[23-Dec-25 10:32:38 AM - INFO] - verify_and_log() - Line 62: attribution - Bot initialized - Creator: @Wolfy0046
+[23-Dec-25 10:32:38 AM - INFO] - start_bot() - Line 1355: __main__ - Starting Telegram bot from server_wsgi.py (long polling)
+[23-Dec-25 10:32:40 AM - INFO] - start_bot() - Line 1438: __main__ - Bot shutting down gracefully...
+[23-Dec-25 10:32:40 AM - INFO] - __init__() - Line 34: helpers.session_manager - Session Manager initialized: max 10 concurrent sessions, 2min idle timeout
+[23-Dec-25 10:32:40 AM - INFO] - disconnect_all() - Line 166: helpers.session_manager - All sessions disconnected
+[23-Dec-25 10:32:40 AM - INFO] - start_bot() - Line 1444: __main__ - Disconnected all user sessions
+[23-Dec-25 10:32:40 AM - ERROR] - start_bot() - Line 1452: __main__ - Error disconnecting bot: Client is already disconnected
+[23-Dec-25 10:32:40 AM - INFO] - start_bot() - Line 1467: __main__ - Bot stopped
+[23-Dec-25 10:35:52 AM - INFO] - start_bot_once() - Line 1512: __main__ - Starting Telegram bot in background thread...
+[23-Dec-25 10:35:52 AM - INFO] - <module>() - Line 1524: __main__ - Starting Waitress WSGI server on 0.0.0.0:5000 (minimal RAM mode)
+[23-Dec-25 10:35:52 AM - INFO] - log_info() - Line 449: waitress - Serving on http://0.0.0.0:5000
+[23-Dec-25 10:35:53 AM - INFO] - __init__() - Line 31: cache - Cache initialized: max_size=100, ttl=120s
+[23-Dec-25 10:35:53 AM - INFO] - _init_database() - Line 123: database_sqlite - Database tables and indexes created successfully
+[23-Dec-25 10:35:53 AM - INFO] - __init__() - Line 24: database_sqlite - Successfully connected to SQLite database: telegram_bot.db
+[23-Dec-25 10:35:53 AM - INFO] - __init__() - Line 16: ad_monetization - Ad Monetization initialized - using Adsterra SmartLink to blog
+[23-Dec-25 10:35:53 AM - INFO] - __init__() - Line 26: queue_manager - Download Manager initialized: 10 concurrent max
+[23-Dec-25 10:35:53 AM - INFO] - start_processor() - Line 53: queue_manager - Download manager ready
+[23-Dec-25 10:35:53 AM - INFO] - _init_queue() - Line 1519: main - Download queue processor initialized
+[23-Dec-25 10:35:53 AM - INFO] - verify_and_log() - Line 62: attribution - Bot initialized - Creator: @Wolfy0046
+[23-Dec-25 10:35:53 AM - INFO] - start_bot() - Line 1363: __main__ - Starting Telegram bot from server_wsgi.py (long polling)
+[23-Dec-25 10:35:55 AM - ERROR] - start_bot() - Line 1368: __main__ - ❌ Telegram rate limit (FloodWait): Need to wait 839s
+   This means: Bot token was blocked by Telegram
+   Solution: Wait 839s or use a new bot token from @BotFather
+[23-Dec-25 10:35:55 AM - INFO] - start_bot() - Line 1470: __main__ - Bot shutting down gracefully...
+[23-Dec-25 10:35:55 AM - INFO] - __init__() - Line 34: helpers.session_manager - Session Manager initialized: max 10 concurrent sessions, 2min idle timeout
+[23-Dec-25 10:35:55 AM - INFO] - disconnect_all() - Line 166: helpers.session_manager - All sessions disconnected
+[23-Dec-25 10:35:55 AM - INFO] - start_bot() - Line 1476: __main__ - Disconnected all user sessions
+[23-Dec-25 10:35:55 AM - ERROR] - start_bot() - Line 1484: __main__ - Error disconnecting bot: Client is already disconnected
+[23-Dec-25 10:35:55 AM - INFO] - start_bot() - Line 1499: __main__ - Bot stopped
+[23-Dec-25 10:42:37 AM - INFO] - start_bot_once() - Line 1514: __main__ - Starting Telegram bot in background thread...
+[23-Dec-25 10:42:38 AM - INFO] - <module>() - Line 1526: __main__ - Starting Waitress WSGI server on 0.0.0.0:5000 (minimal RAM mode)
