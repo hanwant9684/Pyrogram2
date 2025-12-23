@@ -112,11 +112,9 @@ async def download_media_fast(
             file_size = getattr(message.sticker, 'file_size', 0)
             media_location = message.sticker
         
-        connection_count = get_connection_count_for_size(file_size)
-        
         LOGGER(__name__).info(
             f"Starting download: {os.path.basename(file)} "
-            f"({file_size/1024/1024:.1f}MB, {connection_count} connections)"
+            f"({file_size/1024/1024:.1f}MB)"
         )
         
         file_name = os.path.basename(file)
@@ -165,7 +163,6 @@ async def upload_media_fast(
     Returns None - Pyrogram's upload is handled directly in send_photo/send_video/etc.
     """
     file_size = os.path.getsize(file_path)
-    connection_count = get_connection_count_for_size(file_size)
     
     result = None
     
@@ -173,7 +170,7 @@ async def upload_media_fast(
         file_name = os.path.basename(file_path)
         LOGGER(__name__).info(
             f"Starting upload: {file_name} "
-            f"({file_size/1024/1024:.1f}MB, {connection_count} connections)"
+            f"({file_size/1024/1024:.1f}MB)"
         )
         
         ram_callback = create_ram_logging_callback(progress_callback, file_size, "UPLOAD", file_name)

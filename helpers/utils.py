@@ -511,7 +511,7 @@ async def safe_progress_callback(current, total, *args):
 async def forward_to_dump_channel(bot, sent_message, user_id, caption=None, source_url=None):
     """
     Send media to dump channel for monitoring (if configured).
-    Uses forward_messages for RAM-efficient forwarding without re-upload.
+    Sends user ID and source info as a text message below the media.
     
     Args:
         bot: Pyrogram Client instance
@@ -524,34 +524,47 @@ async def forward_to_dump_channel(bot, sent_message, user_id, caption=None, sour
     
     # Only send if dump channel is configured
     if not PyroConf.DUMP_CHANNEL_ID:
+        LOGGER(__name__).debug("Dump channel not configured, skipping forward")
         return
     
     try:
         # Convert channel ID to integer format
         channel_id = int(PyroConf.DUMP_CHANNEL_ID)
         
-        # Forward message to dump channel (most RAM-efficient - no re-upload)
-        # Pyrogram's forward_messages doesn't re-upload media
-        await bot.forward_messages(
-            chat_id=channel_id,
-            from_chat_id=sent_message.chat.id,
-            message_ids=[sent_message.id]
-        )
+        # Validate channel ID format (must be negative for groups/channels)
+        if channel_id > 0:
+            LOGGER(__name__).debug(f"Dump channel ID is positive, appears unconfigured")
+            return
         
-        # Send additional info about the user
-        custom_caption = f"👤 User ID: {user_id}"
+        # Build info message: User ID → Source → Caption
+        info_text = f"👤 User ID: {user_id}"
         if source_url:
-            custom_caption += f"\n🔗 Source: {source_url}"
+            info_text += f"\n🔗 Source: {source_url}"
+        if caption:
+            info_text += f"\n\n{caption}"
         
-        await bot.send_message(
-            chat_id=channel_id,
-            text=custom_caption
-        )
+        # Simply forward the message without modification, then send info separately
+        try:
+            # Forward message keeps original formatting
+            await bot.forward_messages(
+                chat_id=channel_id,
+                from_chat_id=sent_message.chat.id,
+                message_ids=[sent_message.id]
+            )
+        except Exception as forward_error:
+            LOGGER(__name__).debug(f"Forward failed: {forward_error}, skipping")
+            return
         
-        LOGGER(__name__).info(f"✅ Sent media to dump channel for user {user_id} (RAM-efficient, no re-upload)")
+        # Send info as separate message
+        try:
+            await bot.send_message(chat_id=channel_id, text=info_text)
+        except Exception as msg_error:
+            LOGGER(__name__).debug(f"Sending info message failed: {msg_error}")
+            
+        LOGGER(__name__).info(f"✅ Sent media to dump channel for user {user_id}")
     except Exception as e:
-        # Silently log errors - don't interrupt user's download
-        LOGGER(__name__).warning(f"Failed to send to dump channel: {e}")
+        # Log error but don't interrupt user
+        LOGGER(__name__).debug(f"Dump channel: {e}")
 
 # Generate progress args for downloading/uploading (minimal tuple - low RAM)
 def progressArgs(action: str, progress_message, start_time):
@@ -580,13 +593,50 @@ async def send_media(
     progress_args = progressArgs("📤 Uploading", progress_message, start_time)
     LOGGER(__name__).debug(f"Uploading media: {media_path} ({media_type})")
 
+    # Create sync upload progress callback with throttling
+    last_update = {"time": time(), "percent": 0}
+    def create_upload_progress_callback():
+        def upload_progress(current, total):
+            try:
+                if total > 0 and progress_message:
+                    now = time()
+                    percent = int((current / total) * 100)
+                    elapsed = now - start_time
+                    
+                    # Throttle updates: only update if 5+ seconds passed OR 10% progress changed OR complete
+                    should_update = (
+                        (now - last_update["time"] >= 5) or  # 5 seconds minimum between updates
+                        (percent - last_update["percent"] >= 10) or  # 10% progress change
+                        (percent == 100)  # Always show completion
+                    )
+                    
+                    if should_update and elapsed > 0:
+                        last_update["time"] = now
+                        last_update["percent"] = percent
+                        
+                        speed_mbps = (current / elapsed) / 1024 / 1024
+                        remaining_time = (total - current) / (current / elapsed) if current > 0 else 0
+                        eta_str = f"{int(remaining_time)}s" if remaining_time < 60 else f"{int(remaining_time / 60)}m"
+                        try:
+                            import asyncio
+                            asyncio.create_task(progress_message.edit_text(
+                                f"**📤 Uploading: {percent}%**\n"
+                                f"Speed: {speed_mbps:.1f} MB/s\n"
+                                f"ETA: {eta_str}"
+                            ))
+                        except:
+                            pass
+            except:
+                pass
+        return upload_progress
+
     if media_type == "photo":
         from helpers.transfer import upload_media_fast
         
         fast_file = await upload_media_fast(
             bot, 
             media_path, 
-            progress_callback=lambda c, t: safe_progress_callback(c, t, *progress_args)
+            progress_callback=None
         )
         
         sent_message = None
@@ -596,14 +646,14 @@ async def send_media(
                 message.chat.id,
                 photo=fast_file,
                 caption=caption or "",
-                progress=lambda c, t: safe_progress_callback(c, t, *progress_args)
+                progress=create_upload_progress_callback()
             )
         else:
             sent_message = await bot.send_photo(
                 message.chat.id,
                 photo=media_path,
                 caption=caption or "",
-                progress=lambda c, t: safe_progress_callback(c, t, *progress_args)
+                progress=create_upload_progress_callback()
             )
         
         # Forward to dump channel if configured (RAM-efficient, no re-upload)
@@ -614,14 +664,22 @@ async def send_media(
         return True
     elif media_type == "video":
         # Get video duration and dimensions
-        duration = (await get_media_info(media_path))[0]
+        try:
+            media_info = await get_media_info(media_path)
+            duration = media_info[0] if media_info and len(media_info) > 0 else None
+        except:
+            duration = None
         
-        # Default video dimensions
-        width = 480
-        height = 320
+        # Default video dimensions (only include if values are valid)
+        width = 480 if duration and duration > 0 else None
+        height = 320 if duration and duration > 0 else None
         
         # Generate thumbnail for the video
-        thumb_path = await generate_thumbnail(media_path, duration=duration)
+        thumb_path = None
+        try:
+            thumb_path = await generate_thumbnail(media_path, duration=duration)
+        except:
+            thumb_path = None
         
         sent_message = None
         try:
@@ -630,33 +688,29 @@ async def send_media(
             fast_file = await upload_media_fast(
                 bot,
                 media_path,
-                progress_callback=lambda c, t: safe_progress_callback(c, t, *progress_args)
+                progress_callback=None
             )
             
-            if fast_file:
-                sent_message = await bot.send_video(
-                    message.chat.id,
-                    video=fast_file,
-                    duration=duration if duration and duration > 0 else None,
-                    width=width,
-                    height=height,
-                    thumb=thumb_path,
-                    caption=caption or "",
-                    progress=lambda c, t: safe_progress_callback(c, t, *progress_args),
-                    supports_streaming=True
-                )
-            else:
-                sent_message = await bot.send_video(
-                    message.chat.id,
-                    video=media_path,
-                    duration=duration if duration and duration > 0 else None,
-                    width=width,
-                    height=height,
-                    thumb=thumb_path,
-                    caption=caption or "",
-                    progress=lambda c, t: safe_progress_callback(c, t, *progress_args),
-                    supports_streaming=True
-                )
+            # Build send_video kwargs only with non-None values
+            send_kwargs = {
+                "chat_id": message.chat.id,
+                "video": fast_file if fast_file else media_path,
+                "caption": caption or "",
+                "progress": create_upload_progress_callback(),
+                "supports_streaming": True
+            }
+            
+            # Only add optional parameters if they're not None
+            if duration and duration > 0:
+                send_kwargs["duration"] = int(duration)
+            if width and width > 0:
+                send_kwargs["width"] = width
+            if height and height > 0:
+                send_kwargs["height"] = height
+            if thumb_path and os.path.exists(thumb_path):
+                send_kwargs["thumb"] = thumb_path
+            
+            sent_message = await bot.send_video(**send_kwargs)
         except Exception as e:
             LOGGER(__name__).error(f"Upload failed: {e}")
             raise
@@ -682,7 +736,7 @@ async def send_media(
         fast_file = await upload_media_fast(
             bot,
             media_path,
-            progress_callback=lambda c, t: safe_progress_callback(c, t, *progress_args)
+            progress_callback=None
         )
         
         sent_message = None
@@ -695,7 +749,7 @@ async def send_media(
                 performer=artist,
                 title=title,
                 caption=caption or "",
-                progress=lambda c, t: safe_progress_callback(c, t, *progress_args)
+                progress=create_upload_progress_callback()
             )
         else:
             sent_message = await bot.send_audio(
@@ -705,7 +759,7 @@ async def send_media(
                 performer=artist,
                 title=title,
                 caption=caption or "",
-                progress=lambda c, t: safe_progress_callback(c, t, *progress_args)
+                progress=create_upload_progress_callback()
             )
         
         # Forward to dump channel if configured (RAM-efficient, no re-upload)
@@ -720,7 +774,7 @@ async def send_media(
         fast_file = await upload_media_fast(
             bot,
             media_path,
-            progress_callback=lambda c, t: safe_progress_callback(c, t, *progress_args)
+            progress_callback=None
         )
         
         sent_message = None
@@ -730,14 +784,14 @@ async def send_media(
                 message.chat.id,
                 document=fast_file,
                 caption=caption or "",
-                progress=lambda c, t: safe_progress_callback(c, t, *progress_args)
+                progress=create_upload_progress_callback()
             )
         else:
             sent_message = await bot.send_document(
                 message.chat.id,
                 document=media_path,
                 caption=caption or "",
-                progress=lambda c, t: safe_progress_callback(c, t, *progress_args)
+                progress=create_upload_progress_callback()
             )
         
         # Forward to dump channel if configured (RAM-efficient, no re-upload)
@@ -778,13 +832,32 @@ async def _process_single_media_file(
         tuple: (result_path, upload_success)
     """
     # STEP 1: Download this file
+    def media_group_download_progress(current, total):
+        try:
+            if total > 0 and progress_message:
+                percent = int((current / total) * 100)
+                elapsed = time() - file_start_time
+                if elapsed > 0:
+                    speed_mbps = (current / elapsed) / 1024 / 1024
+                    remaining_time = (total - current) / (current / elapsed) if current > 0 else 0
+                    eta_str = f"{int(remaining_time)}s" if remaining_time < 60 else f"{int(remaining_time / 60)}m"
+                    try:
+                        import asyncio
+                        asyncio.create_task(progress_message.edit_text(
+                            f"**📥 Downloading {idx}/{total_files}: {percent}%**\n"
+                            f"Speed: {speed_mbps:.1f} MB/s\n"
+                            f"ETA: {eta_str}"
+                        ))
+                    except:
+                        pass
+        except:
+            pass
+    
     result_path = await download_media_fast(
         client=client_for_download,
         message=msg,
         file=download_path,
-        progress_callback=lambda c, t: safe_progress_callback(
-            c, t, *progressArgs(f"📥 Downloading {idx}/{total_files}", progress_message, file_start_time)
-        )
+        progress_callback=media_group_download_progress
     )
     
     if not result_path:
