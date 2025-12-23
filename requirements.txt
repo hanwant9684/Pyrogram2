@@ -1,0 +1,15 @@
+# Telegram Bot Dependencies
+pyrogram>=2.0.0
+tgcrypto
+cryptg
+
+# System utilities
+psutil
+uvloop
+
+# Web server
+flask
+waitress
+
+# Performance
+orjson
