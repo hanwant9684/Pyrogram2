@@ -1,19 +1,16 @@
 # Copyright (C) @Wolfy004
 # Migrated to Pyrogram
-# FIXED VERSION - Removed unused parameter
 
-from typing import Tuple, Union
+from typing import Optional, List, Tuple, Union
 from pyrogram_helpers import parse_message_link
 
-
-# FIX: Removed async and unused entities parameter - this is a simple sync function
-def get_parsed_msg(text: str) -> str:
+async def get_parsed_msg(text: str, entities: Optional[List] = None) -> str:
     """
-    Parse message text.
-    Pyrogram handles entities automatically, so this just returns the text.
+    Parse message text with entities
     
     Args:
         text: Message text
+        entities: List of MessageEntity objects
         
     Returns:
         Parsed text (plain text, entities are preserved by Pyrogram)
@@ -21,7 +18,6 @@ def get_parsed_msg(text: str) -> str:
     if not text:
         return ""
     return text
-
 
 def getChatMsgID(link: str) -> Tuple[Union[int, str], int]:
     """
@@ -56,7 +52,6 @@ def getChatMsgID(link: str) -> Tuple[Union[int, str], int]:
             pass
     
     return chat_id, message_id
-
 
 def get_file_name(message_id: int, message) -> str:
     """
