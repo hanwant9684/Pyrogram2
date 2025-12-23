@@ -67,6 +67,26 @@ MAX_CONNECTIONS = CONNECTIONS_PER_TRANSFER
 MAX_UPLOAD_CONNECTIONS = CONNECTIONS_PER_TRANSFER
 MAX_DOWNLOAD_CONNECTIONS = CONNECTIONS_PER_TRANSFER
 
+
+def has_downloadable_media(msg: Message) -> bool:
+    """
+    FIXED: Check if message has any downloadable media.
+    More reliable than checking .media attribute which can be EMPTY.
+    """
+    if not msg:
+        return False
+    return any([
+        getattr(msg, 'photo', None),
+        getattr(msg, 'video', None),
+        getattr(msg, 'audio', None),
+        getattr(msg, 'document', None),
+        getattr(msg, 'voice', None),
+        getattr(msg, 'video_note', None),
+        getattr(msg, 'animation', None),
+        getattr(msg, 'sticker', None)
+    ])
+
+
 async def download_media_fast(
     client: Client,
     message: Message,
@@ -79,11 +99,12 @@ async def download_media_fast(
     Since each user has their own Telegram session, each download can
     use the full connection capacity without needing global pooling.
     """
-    if not message.media:
-        raise ValueError("Message has no media")
+    # FIXED: Use robust media detection instead of just message.media
+    if not has_downloadable_media(message):
+        raise ValueError("Message has no downloadable media")
     
     # Check for paid media (Pyrogram identifies this via media type checking)
-    if hasattr(message.media, 'is_paid') and message.media.is_paid:
+    if hasattr(message, 'media') and message.media and hasattr(message.media, 'is_paid') and message.media.is_paid:
         LOGGER(__name__).warning(f"Paid media detected - this is premium content")
         raise ValueError("Paid media (premium content) cannot be downloaded - the content owner requires payment to access this media")
     
@@ -112,6 +133,9 @@ async def download_media_fast(
         elif message.sticker:
             file_size = getattr(message.sticker, 'file_size', 0)
             media_location = message.sticker
+        elif message.animation:
+            file_size = getattr(message.animation, 'file_size', 0)
+            media_location = message.animation
         
         LOGGER(__name__).info(
             f"Starting download: {os.path.basename(file)} "
