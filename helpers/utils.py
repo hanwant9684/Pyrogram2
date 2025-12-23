@@ -1033,7 +1033,7 @@ async def processMediaGroup(chat_message, bot, message, user_id=None, user_clien
     # Get all messages in the media group
     media_group_messages = await client_for_download.get_messages(
         chat_id,
-        ids=[chat_message.id + i for i in range(-10, 11)]
+        message_ids=[chat_message.id + i for i in range(-10, 11)]
     )
     
     # CRITICAL RAM FIX: Extract only message IDs, then immediately clear the message list
@@ -1091,7 +1091,7 @@ async def processMediaGroup(chat_message, bot, message, user_id=None, user_clien
             
             # CRITICAL RAM FIX: Re-fetch the message fresh for each file
             # This prevents closure capture and allows each message to be GC'd after processing
-            msg = await client_for_download.get_messages(chat_id, ids=msg_id)
+            msg = await client_for_download.get_messages(chat_id, message_ids=msg_id)
             
             if not msg or not (msg.media or msg.photo or msg.video or msg.document or msg.audio or msg.voice or msg.video_note or msg.animation or msg.sticker):
                 LOGGER(__name__).warning(f"File {idx}/{total_files}: No media found in message {msg_id}")
