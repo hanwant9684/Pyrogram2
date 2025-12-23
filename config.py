@@ -35,7 +35,7 @@ class PyroConf:
     ADMIN_USERNAME = os.getenv("ADMIN_USERNAME", "")
     PAYPAL_URL = os.getenv("PAYPAL_URL", "")
     UPI_ID = os.getenv("UPI_ID", "")
-    TELEGRAM_TON = os.getenv("TELEGRAM_TON", "")
+    TELEGRAM_TON= os.getenv("TELEGRAM_TON", "")
     CRYPTO_ADDRESS = os.getenv("CRYPTO_ADDRESS", "")
     
     # Ad Monetization - Droplink.co
@@ -98,6 +98,7 @@ class PyroConf:
         Supports: Railway, Render, Heroku, VPS, Replit, and custom deployments.
         
         Priority order:
+            pass
         1. APP_URL (custom/manual override)
         2. Railway environment variables
         3. Render environment variables

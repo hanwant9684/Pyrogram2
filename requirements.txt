@@ -17,7 +17,7 @@ cryptg
 flask
 orjson
 psutil
-pyrotgfork>=2.1.0
+pyrogram
 tgcrypto
 uvloop
 waitress
@@ -25,7 +25,7 @@ cryptg
 flask
 orjson
 psutil
-pyrotgfork>=2.1.0
+pyrogram
 tgcrypto
 uvloop
 waitress
@@ -33,14 +33,14 @@ cryptg
 flask
 orjson
 psutil
-pyrotgfork>=2.1.0
+pyrogram
 tgcrypto
 uvloop
 waitress
 cryptg
 flask
 psutil
-pyrotgfork>=2.1.0
+pyrogram
 tgcrypto
 uvloop
 waitress

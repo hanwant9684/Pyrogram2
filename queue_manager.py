@@ -43,7 +43,8 @@ class DownloadManager:
             if self._active_download_refs[user_id] <= 0:
                 self.active_downloads.discard(user_id)
                 del self._active_download_refs[user_id]
-            # FIXED: Removed empty else: pass block
+            else:
+                pass
         else:
             self.active_downloads.discard(user_id)
     

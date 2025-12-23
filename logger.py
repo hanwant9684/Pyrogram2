@@ -1,6 +1,3 @@
-# Copyright (C) @Wolfy004
-# Channel: https://t.me/Wolfy004
-
 import logging
 import os
 import glob
@@ -44,10 +41,9 @@ logging.basicConfig(
     ],
 )
 
-# Set Pyrogram logging to ERROR level to reduce noise
+# FIXED: Changed from "telethon" to "pyrogram" for Pyrogram-based bot
 logging.getLogger("pyrogram").setLevel(logging.ERROR)
 
 
 def LOGGER(name: str) -> logging.Logger:
-    """Get a logger instance for the given module name"""
     return logging.getLogger(name)

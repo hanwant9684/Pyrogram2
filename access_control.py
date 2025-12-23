@@ -2,7 +2,6 @@
 # Channel: https://t.me/Wolfy004
 
 import asyncio
-import weakref
 from functools import wraps
 from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from pyrogram.errors import UserNotParticipant, ChatAdminRequired, ChannelPrivate
@@ -10,17 +9,8 @@ from database_sqlite import db
 from logger import LOGGER
 from config import PyroConf
 
-# Track background tasks to prevent memory leaks
-# Using a set to store task references - tasks auto-remove when done
-_background_tasks = set()
-
-def _track_task(task):
-    """Add task to tracking set and auto-remove when done"""
-    _background_tasks.add(task)
-    task.add_done_callback(_background_tasks.discard)
-
 # Helper function to avoid redundant DB calls in decorators
-async def _register_and_check_user(client, message) -> tuple:
+async def _register_and_check_user(client, message) -> tuple[int, bool]:
     """
     Register user and check ban status in one go.
     Returns (user_id, is_banned)
@@ -38,19 +28,19 @@ async def _register_and_check_user(client, message) -> tuple:
         user_id=user_id,
         username=sender.username if sender else None,
         first_name=sender.first_name if sender else None,
-        last_name=sender.last_name if sender else None
+        last_name=sender.last_name if hasattr(sender, 'last_name') and sender else None
     )
     
     # Log new user registration
     if not user_exists:
-        username = f"@{sender.username}" if sender and sender.username else "No username"
-        name = sender.first_name if sender and sender.first_name else "Unknown"
+        username = f"@{sender.username}" if sender.username else "No username"
+        name = sender.first_name if sender.first_name else "Unknown"
         LOGGER(__name__).info(f"📝 NEW USER REGISTERED | ID: {user_id} | Username: {username} | Name: {name}")
     
     # Check if banned (uses cache)
     is_banned = db.is_banned(user_id)
     if is_banned:
-        username = f"@{sender.username}" if sender and sender.username else str(user_id)
+        username = f"@{sender.username}" if sender.username else user_id
         LOGGER(__name__).warning(f"🚫 BANNED USER ATTEMPTED ACCESS | ID: {user_id} | Username: {username}")
     
     return user_id, is_banned
@@ -115,25 +105,26 @@ def check_download_limit(func):
         can_download, message_text = db.can_download(user_id)
         if not can_download:
             from ad_monetization import PREMIUM_DOWNLOADS
+            # FIXED: Use InlineKeyboardButton with callback_data parameter (Pyrogram style)
             keyboard = InlineKeyboardMarkup([
                 [InlineKeyboardButton(f"🎁 Watch Ad & Get {PREMIUM_DOWNLOADS} Downloads", callback_data="watch_ad_now")],
                 [InlineKeyboardButton("💰 Upgrade to Premium", callback_data="upgrade_premium")]
             ])
             sent_msg = await client.send_message(message.chat.id, message_text, reply_markup=keyboard)
             
-            # Auto-delete after 30 seconds with proper task tracking
+            # Auto-delete after 30 seconds (fire-and-forget, cleaned up automatically)
             async def delete_after_delay():
                 try:
                     await asyncio.sleep(30)
                     await sent_msg.delete()
                 except asyncio.CancelledError:
                     pass  # Task cancelled during shutdown, ignore
-                except Exception:
-                    pass  # Message might already be deleted
+                except Exception as e:
+                    pass
             
-            # Create and track task to prevent memory leak
+            # Create task with name for debugging; task auto-cleans when done
             task = asyncio.create_task(delete_after_delay())
-            _track_task(task)
+            task.add_done_callback(lambda t: t.exception() if not t.cancelled() else None)
             return
 
         return await func(client, message)
@@ -262,7 +253,6 @@ def force_subscribe(func):
             except Exception as e:
                 # If get_chat or get_chat_member fails, try to allow access
                 # Allow access to avoid blocking users on channel check errors
-                LOGGER(__name__).warning(f"Channel check failed, allowing access: {e}")
                 return await func(client, message)
                     
         except (ChatAdminRequired, ChannelPrivate) as e:
@@ -279,6 +269,7 @@ def force_subscribe(func):
         if not channel_username.startswith('@'):
             channel_username = f"@{channel_username}"
         
+        # FIXED: Use InlineKeyboardButton with url parameter (Pyrogram style)
         join_button = InlineKeyboardMarkup([
             [InlineKeyboardButton("📢 Join Channel", url=f"https://t.me/{channel_username.replace('@', '')}")]
         ])
@@ -293,17 +284,3 @@ def force_subscribe(func):
         )
     
     return wrapper
-
-def get_active_tasks_count():
-    """Get count of active background tasks (for monitoring)"""
-    return len(_background_tasks)
-
-async def cancel_all_tasks():
-    """Cancel all background tasks (call on shutdown)"""
-    for task in list(_background_tasks):
-        if not task.done():
-            task.cancel()
-    # Wait for all tasks to complete
-    if _background_tasks:
-        await asyncio.gather(*_background_tasks, return_exceptions=True)
-    _background_tasks.clear()

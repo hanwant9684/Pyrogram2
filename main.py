@@ -35,7 +35,6 @@ from helpers.msg import (
     get_parsed_msg
 )
 
-from pyrogram_helpers import has_downloadable_media
 from config import PyroConf
 from logger import LOGGER
 from database_sqlite import db
@@ -100,10 +99,6 @@ def is_new_update(_, __, message: Message):
 
 # Create the filter
 new_updates_only = filters.create(is_new_update)
-
-
-
-
 
 def track_task(coro, user_id=None):
     task = asyncio.create_task(coro)
@@ -429,8 +424,7 @@ async def handle_download(bot: Client, message: Message, post_url: str, user_cli
             
             return
 
-        # FIXED: Use robust media detection instead of just chat_message.media
-        elif has_downloadable_media(chat_message):
+        elif chat_message.media:
             start_time = time()
             progress_message = await message.reply("**📥 Downloading Progress...**")
 
@@ -704,19 +698,8 @@ async def download_range(bot: Client, message: Message):
                 skipped += 1
                 continue
 
-            # FIXED: Check specific media attributes for reliable detection
-            has_media = bool(
-                getattr(chat_msg, 'media_group_id', None) or
-                getattr(chat_msg, 'photo', None) or
-                getattr(chat_msg, 'video', None) or
-                getattr(chat_msg, 'audio', None) or
-                getattr(chat_msg, 'document', None) or
-                getattr(chat_msg, 'voice', None) or
-                getattr(chat_msg, 'video_note', None) or
-                getattr(chat_msg, 'animation', None) or
-                getattr(chat_msg, 'sticker', None)
-            )
-            has_text = bool(getattr(chat_msg, 'text', None) or getattr(chat_msg, 'caption', None))
+            has_media = bool(getattr(chat_msg, 'media_group_id', None) or getattr(chat_msg, 'media', None))
+            has_text  = bool(getattr(chat_msg, 'text', None) or getattr(chat_msg, 'caption', None))
             if not (has_media or has_text):
                 skipped += 1
                 continue
@@ -1210,14 +1193,10 @@ async def verify_premium_command(client: Client, message: Message):
         
         verification_code = message.command[1].strip()
         
-        success, msg = ad_monetization.verify_and_grant_downloads(message.from_user.id, verification_code)
+        success, msg = ad_monetization.verify_code(verification_code, message.from_user.id)
         
         if success:
-            await message.reply(
-                f"✅ **Verification successful!**\n\n"
-                f"🎁 You've been granted **{PREMIUM_DOWNLOADS} free download(s)**!\n\n"
-                f"📥 Start downloading now by sending any Telegram post link."
-            )
+            await message.reply(msg)
             LOGGER(__name__).info(f"User {message.from_user.id} successfully verified ad code and received downloads")
         else:
             await message.reply(msg)
@@ -1559,20 +1538,17 @@ async def callback_handler(client: Client, callback_query: CallbackQuery):
 # Start queue processor in background when module loads
 def _init_queue():
     """Initialize queue processor on module load"""
-    try:
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        loop.run_until_complete(download_manager.start_processor())
-        LOGGER(__name__).info("Download queue processor initialized")
-    except Exception as e:
-        LOGGER(__name__).error(f"Failed to initialize queue processor: {e}")
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    loop.run_until_complete(download_manager.start_processor())
+    LOGGER(__name__).info("Download queue processor initialized")
 
 # Schedule queue processor startup
 try:
     import threading
     threading.Thread(target=_init_queue, daemon=True).start()
-except Exception as e:
-    LOGGER(__name__).warning(f"Could not start queue processor thread: {e}")
+except:
+    LOGGER(__name__).warning("Could not start queue processor thread")
 
 # Verify bot attribution on startup
 verify_attribution()

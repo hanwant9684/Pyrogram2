@@ -8,7 +8,6 @@ Especially important on Render's 512MB RAM limit
 
 import os
 import time
-import asyncio
 from typing import Optional, Dict, Any
 from collections import OrderedDict
 from logger import LOGGER
@@ -29,7 +28,6 @@ class LRUCache:
         self.default_ttl = default_ttl
         self.hits = 0
         self.misses = 0
-        self._cleanup_task = None
         LOGGER(__name__).info(f"Cache initialized: max_size={max_size}, ttl={default_ttl}s")
     
     def _is_expired(self, entry: Dict[str, Any]) -> bool:
@@ -130,40 +128,6 @@ IS_CONSTRAINED = bool(
 CACHE_SIZE = 100 if IS_CONSTRAINED else 500
 _cache = LRUCache(max_size=CACHE_SIZE, default_ttl=120)  # Shorter TTL (2 min) to free memory faster
 
-# Periodic cleanup task reference
-_cleanup_task = None
-
-async def periodic_cache_cleanup(interval_seconds: int = 60):
-    """Run periodic cache cleanup to remove expired entries"""
-    LOGGER(__name__).info(f"Starting periodic cache cleanup every {interval_seconds} seconds")
-    while True:
-        try:
-            await asyncio.sleep(interval_seconds)
-            removed = _cache.cleanup_expired()
-            if removed > 0:
-                LOGGER(__name__).debug(f"Periodic cleanup removed {removed} expired cache entries")
-        except asyncio.CancelledError:
-            LOGGER(__name__).info("Cache cleanup task cancelled")
-            break
-        except Exception as e:
-            LOGGER(__name__).error(f"Error in periodic cache cleanup: {e}")
-            await asyncio.sleep(interval_seconds)
-
-def start_cache_cleanup():
-    """Start the periodic cache cleanup task"""
-    global _cleanup_task
-    if _cleanup_task is None or _cleanup_task.done():
-        _cleanup_task = asyncio.create_task(periodic_cache_cleanup(60))
-        LOGGER(__name__).info("Cache cleanup task started")
-    return _cleanup_task
-
-def stop_cache_cleanup():
-    """Stop the periodic cache cleanup task"""
-    global _cleanup_task
-    if _cleanup_task and not _cleanup_task.done():
-        _cleanup_task.cancel()
-        _cleanup_task = None
-        LOGGER(__name__).info("Cache cleanup task stopped")
 
 def get_cache() -> LRUCache:
     """Get global cache instance"""

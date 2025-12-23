@@ -1,6 +1,3 @@
-# Copyright (C) @Wolfy004
-# Channel: https://t.me/Wolfy004
-
 import base64
 import hashlib
 from logger import LOGGER
@@ -15,6 +12,7 @@ class BotAttribution:
     def __init__(self):
         # Encoded channel links (base64 + rotation)
         self._s1 = "aHR0cHM6Ly90Lm1lL1dvbGZ5MDA0"
+        self._s2 = ""
         self._s3 = "QFdvbGZ5MDA0Ng=="
         self._s4 = "QFdvbGZ5MDA0Ng=="
         
@@ -25,22 +23,26 @@ class BotAttribution:
         """Decode protected string"""
         try:
             return base64.b64decode(encoded).decode('utf-8')
-        except Exception:
+        except:
             return ""
     
     def _verify(self) -> bool:
         """Verify attribution hasn't been tampered with"""
-        # Updated to match actual stored values
-        data = f"{self._s1}{self._s3}{self._s4}"
+        data = f"{self._s1}{self._s2}{self._s3}{self._s4}"
         check = hashlib.md5(data.encode()).hexdigest()[:16]
-        # Note: checksum may need updating if values changed
-        return True  # Allow operation even if checksum differs
+        return check == self._checksum
     
     def get_primary_channel(self) -> str:
         """Get primary update channel link"""
         if not self._verify():
             LOGGER(__name__).warning("Attribution verification failed")
         return self._decode(self._s1)
+    
+    def get_secondary_channel(self) -> str:
+        """Get secondary update channel link"""
+        if not self._verify():
+            LOGGER(__name__).warning("Attribution verification failed")
+        return self._decode(self._s2)
     
     def get_primary_username(self) -> str:
         """Get primary creator username"""
@@ -68,13 +70,13 @@ def get_attribution():
     """Get attribution instance"""
     return _attribution
 
-def get_channel_link():
-    """Quick access to primary channel link"""
-    return _attribution.get_primary_channel()
+def get_channel_link(primary=True):
+    """Quick access to channel links"""
+    return _attribution.get_primary_channel() if primary else _attribution.get_secondary_channel()
 
-def get_creator_username():
-    """Quick access to primary creator username"""
-    return _attribution.get_primary_username()
+def get_creator_username(primary=True):
+    """Quick access to creator usernames"""
+    return _attribution.get_primary_username() if primary else _attribution.get_secondary_username()
 
 def verify_attribution():
     """Verify attribution on bot startup"""

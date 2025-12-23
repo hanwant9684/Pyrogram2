@@ -1,6 +1,4 @@
 #!/usr/bin/env python3
-# Copyright (C) @Wolfy004
-# Channel: https://t.me/Wolfy004
 """
 GitHub Backup Integration for SQLite Database
 Automatically backs up database to GitHub repository
@@ -17,7 +15,7 @@ DB_PATH = os.getenv("DATABASE_PATH", "telegram_bot.db")
 
 # Concurrency control for backup operations
 _backup_lock = threading.Lock()
-_backup_in_progress = threading.Event()
+_backup_in_progress = False
 
 def _create_temp_backup():
     """Create a temporary backup of the database for GitHub upload (internal use only)"""
@@ -41,12 +39,6 @@ def _create_temp_backup():
         return temp_path
     except Exception as e:
         LOGGER(__name__).error(f"Failed to create temp backup: {e}")
-        # Clean up temp file if it exists
-        if os.path.exists(temp_path):
-            try:
-                os.remove(temp_path)
-            except Exception:
-                pass
         return None
 
 def _restore_from_temp(backup_path):
@@ -81,7 +73,7 @@ def cleanup_old_github_backups(token, repo, keep_count=2):
         }
         
         req = urllib.request.Request(list_url, headers=headers)
-        with urllib.request.urlopen(req, timeout=30) as response:
+        with urllib.request.urlopen(req) as response:
             backups = json.loads(response.read().decode())
         
         if not backups or len(backups) <= keep_count:
@@ -95,7 +87,7 @@ def cleanup_old_github_backups(token, repo, keep_count=2):
                 delete_url = f"https://api.github.com/repos/{repo}/contents/{backup['path']}"
                 
                 req = urllib.request.Request(delete_url, headers=headers)
-                with urllib.request.urlopen(req, timeout=30) as resp:
+                with urllib.request.urlopen(req) as resp:
                     file_data = json.loads(resp.read().decode())
                 
                 data = {
@@ -110,7 +102,7 @@ def cleanup_old_github_backups(token, repo, keep_count=2):
                     method='DELETE'
                 )
                 
-                with urllib.request.urlopen(req, timeout=30) as response:
+                with urllib.request.urlopen(req) as response:
                     if response.status == 200:
                         LOGGER(__name__).info(f"🗑️ Deleted old backup: {backup['name']}")
             except Exception as e:
@@ -163,7 +155,7 @@ def backup_to_github():
         
         req = urllib.request.Request(url, data=json.dumps(data).encode(), headers=headers, method='PUT')
         
-        with urllib.request.urlopen(req, timeout=60) as response:
+        with urllib.request.urlopen(req) as response:
             if response.status == 201:
                 LOGGER(__name__).info(f"✅ Uploaded to GitHub: {file_path}")
                 
@@ -180,24 +172,28 @@ def backup_to_github():
 
 def trigger_backup_on_session(user_id):
     """Trigger backup when new user session is created (non-blocking, thread-safe)"""
+    global _backup_in_progress
+    
     backup_service = os.getenv("CLOUD_BACKUP_SERVICE", "").lower()
     if backup_service != "github":
         return False
     
-    # Check if backup is already in progress using Event (safer than bool flag)
-    if _backup_in_progress.is_set():
-        LOGGER(__name__).debug(f"Backup already in progress, skipping session backup for user {user_id}")
-        return False
+    with _backup_lock:
+        if _backup_in_progress:
+            return False
+        
+        _backup_in_progress = True
     
     def _backup_worker():
+        global _backup_in_progress
         try:
-            _backup_in_progress.set()
             LOGGER(__name__).info(f"🔐 New session created for user {user_id}, triggering backup...")
             backup_to_github()
         except Exception as e:
             LOGGER(__name__).error(f"Session backup failed: {e}")
         finally:
-            _backup_in_progress.clear()
+            with _backup_lock:
+                _backup_in_progress = False
     
     thread = threading.Thread(target=_backup_worker, daemon=True, name=f"SessionBackup-{user_id}")
     thread.start()
@@ -208,6 +204,7 @@ def trigger_backup_on_critical_change(operation_name, user_id=None):
     Trigger backup when critical database changes occur (non-blocking, thread-safe)
     
     Critical operations that trigger backup:
+        pass
     - add_ad_downloads: User earns ad download credits
     - set_premium: User gets premium subscription
     - set_user_type: User type changes
@@ -216,25 +213,29 @@ def trigger_backup_on_critical_change(operation_name, user_id=None):
     
     This prevents data loss on Render/VPS restarts!
     """
+    global _backup_in_progress
+    
     backup_service = os.getenv("CLOUD_BACKUP_SERVICE", "").lower()
     if backup_service != "github":
         return False
     
-    # Check if backup is already in progress using Event
-    if _backup_in_progress.is_set():
-        LOGGER(__name__).debug(f"Backup already in progress, skipping critical backup for {operation_name}")
-        return False
+    with _backup_lock:
+        if _backup_in_progress:
+            return False
+        
+        _backup_in_progress = True
     
     def _backup_worker():
+        global _backup_in_progress
         try:
-            _backup_in_progress.set()
             user_info = f" (user {user_id})" if user_id else ""
             LOGGER(__name__).info(f"💾 Critical change detected: {operation_name}{user_info}, triggering backup...")
             backup_to_github()
         except Exception as e:
             LOGGER(__name__).error(f"Critical change backup failed: {e}")
         finally:
-            _backup_in_progress.clear()
+            with _backup_lock:
+                _backup_in_progress = False
     
     thread = threading.Thread(target=_backup_worker, daemon=True, name=f"CriticalBackup-{operation_name}")
     thread.start()
@@ -245,6 +246,7 @@ def restore_from_github(backup_name=None):
     Download and restore database from GitHub
     
     IMPORTANT: When deployed to Render or any service restart:
+        pass
     - This function ALWAYS downloads the NEWEST backup file
     - Backups are sorted by filename (timestamp) in descending order
     - The latest backup is automatically selected
@@ -271,7 +273,7 @@ def restore_from_github(backup_name=None):
             
             req = urllib.request.Request(list_url, headers=headers)
             
-            with urllib.request.urlopen(req, timeout=30) as response:
+            with urllib.request.urlopen(req) as response:
                 backups = json.loads(response.read().decode())
             
             if not backups:
@@ -287,7 +289,7 @@ def restore_from_github(backup_name=None):
         
         req = urllib.request.Request(download_url)
         
-        with urllib.request.urlopen(req, timeout=60) as response:
+        with urllib.request.urlopen(req) as response:
             backup_content = response.read()
         
         temp_path = "temp_restore.db"
@@ -324,9 +326,6 @@ async def periodic_cloud_backup(interval_minutes=10):
         try:
             await asyncio.sleep(interval_minutes * 60)
             backup_to_github()
-        except asyncio.CancelledError:
-            LOGGER(__name__).info("Periodic backup task cancelled")
-            break
         except Exception as e:
             LOGGER(__name__).error(f"Error in periodic GitHub backup: {e}")
             await asyncio.sleep(600)
@@ -337,7 +336,7 @@ async def restore_latest_from_cloud():
     try:
         from config import PyroConf
         backup_service = PyroConf.CLOUD_BACKUP_SERVICE
-    except Exception:
+    except:
         backup_service = os.getenv("CLOUD_BACKUP_SERVICE", "").lower()
     
     if not backup_service or backup_service != "github":
@@ -346,6 +345,14 @@ async def restore_latest_from_cloud():
     LOGGER(__name__).info("Attempting to restore from GitHub...")
     return restore_from_github()
 
-def is_backup_in_progress():
-    """Check if a backup is currently in progress"""
-    return _backup_in_progress.is_set()
+if __name__ == "__main__":
+    print("=" * 60)
+    print("=" * 60)
+    
+    choice = input("\nEnter choice (1-2): ").strip()
+    
+    if choice == "1":
+        backup_to_github()
+    elif choice == "2":
+        import asyncio
+        asyncio.run(restore_latest_from_cloud())
