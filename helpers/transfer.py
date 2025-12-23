@@ -13,7 +13,7 @@ CONFIGURATION (Environment Variables):
 import os
 import asyncio
 import gc
-from typing import Optional, Callable, Set
+from typing import Optional, Callable
 from pyrogram import Client
 from pyrogram.types import Message
 from logger import LOGGER
@@ -29,48 +29,6 @@ IS_CONSTRAINED = bool(
 )
 
 
-def get_ram_usage_mb():
-    """Get current RAM usage in MB"""
-    try:
-        import psutil
-        process = psutil.Process(os.getpid())
-        return process.memory_info().rss / 1024 / 1024
-    except ImportError:
-        return 0.0
-
-
-def create_ram_logging_callback(original_callback: Optional[Callable], file_size: int, operation: str, file_name: str):
-    """
-    Wrap progress callback to log RAM usage at 25%, 50%, 75% progress.
-    """
-    logged_thresholds: Set[int] = set()
-    start_ram = get_ram_usage_mb()
-    LOGGER(__name__).info(f"[RAM] {operation} START: {file_name} - RAM: {start_ram:.1f}MB")
-    
-    def ram_logging_wrapper(current: int, total: int):
-        nonlocal logged_thresholds
-        
-        if total <= 0:
-            if original_callback:
-                return original_callback(current, total)
-            return
-        
-        percent = (current / total) * 100
-        
-        for threshold in [25, 50, 75, 100]:
-            if percent >= threshold and threshold not in logged_thresholds:
-                logged_thresholds.add(threshold)
-                current_ram = get_ram_usage_mb()
-                ram_increase = current_ram - start_ram
-                LOGGER(__name__).info(
-                    f"[RAM] {operation} {threshold}%: {file_name} - "
-                    f"RAM: {current_ram:.1f}MB (+{ram_increase:.1f}MB from start)"
-                )
-        
-        if original_callback:
-            return original_callback(current, total)
-    
-    return ram_logging_wrapper
 
 
 # FIX: Removed unused MAX_CONNECTIONS, MAX_UPLOAD_CONNECTIONS, MAX_DOWNLOAD_CONNECTIONS
@@ -145,29 +103,15 @@ async def download_media_fast(
             file_size = getattr(message.animation, 'file_size', 0)
             media_location = message.animation
         
-        LOGGER(__name__).info(
-            f"Starting download: {os.path.basename(file)} "
-            f"({file_size/1024/1024:.1f}MB)"
-        )
-        
-        file_name = os.path.basename(file)
-        ram_callback = create_ram_logging_callback(progress_callback, file_size, "DOWNLOAD", file_name)
-        
         if media_location and file_size > 0:
             # Use Pyrogram's native download_media with progress callback
             await client.download_media(
                 message,
                 file_name=file,
-                progress=ram_callback
+                progress=progress_callback
             )
             
-            end_ram = get_ram_usage_mb()
-            LOGGER(__name__).info(f"[RAM] DOWNLOAD COMPLETE: {file_name} - RAM before GC: {end_ram:.1f}MB")
-            
             gc.collect()
-            after_gc_ram = get_ram_usage_mb()
-            ram_released = end_ram - after_gc_ram
-            LOGGER(__name__).info(f"[RAM] DOWNLOAD GC: {file_name} - RAM after GC: {after_gc_ram:.1f}MB (released: {ram_released:.1f}MB)")
             return file
         else:
             LOGGER(__name__).warning(
@@ -201,29 +145,15 @@ async def upload_media_fast(
     result = None
     
     try:
-        file_name = os.path.basename(file_path)
-        LOGGER(__name__).info(
-            f"Starting upload: {file_name} "
-            f"({file_size/1024/1024:.1f}MB)"
-        )
-        
-        # Note: ram_callback is created but the actual upload is handled by send methods
+        # Note: the actual upload is handled by send methods
         # This function prepares the upload but doesn't execute it
         
-        end_ram = get_ram_usage_mb()
-        LOGGER(__name__).info(f"[RAM] UPLOAD COMPLETE: {file_name} - RAM before GC: {end_ram:.1f}MB")
+        gc.collect()
         return result
         
     except Exception as e:
         LOGGER(__name__).error(f"Pyrogram upload preparation failed: {e}")
         return None
-        
-    finally:
-        before_gc = get_ram_usage_mb()
-        gc.collect()
-        after_gc = get_ram_usage_mb()
-        ram_released = before_gc - after_gc
-        LOGGER(__name__).info(f"[RAM] UPLOAD GC: {os.path.basename(file_path)} - RAM after GC: {after_gc:.1f}MB (released: {ram_released:.1f}MB)")
 
 
 def get_connection_count_for_size(file_size: int, max_count: int = CONNECTIONS_PER_TRANSFER) -> int:
