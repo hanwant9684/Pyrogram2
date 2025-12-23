@@ -391,25 +391,8 @@ async def handle_download(bot: Client, message: Message, post_url: str, user_cli
         )
 
         if chat_message.media_group_id:
-            # Count files in media group first for quota check
-            media_group_messages = await chat_message.get_media_group()
-            file_count = sum(1 for msg in media_group_messages if msg.photo or msg.video or msg.document or msg.audio)
-            
-            LOGGER(__name__).info(f"Media group detected with {file_count} files for user {message.from_user.id}")
-            
-            # Pre-flight quota check before downloading
-            if increment_usage:
-                can_dl, quota_msg = db.can_download(message.from_user.id, file_count)
-                if not can_dl:
-                    from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-                    keyboard = InlineKeyboardMarkup([
-                        [InlineKeyboardButton("🎁 Watch Ad & Get 1 Download", callback_data="watch_ad_now")],
-                        [InlineKeyboardButton("💰 Upgrade to Premium", callback_data="upgrade_premium")]
-                    ])
-                    await message.reply(quota_msg, reply_markup=keyboard)
-                    return
-            
             # Download media group - CRITICAL: Pass user_client for private channel access
+            LOGGER(__name__).info(f"Media group detected for user {message.from_user.id}")
             files_sent = await processMediaGroup(chat_message, bot, message, message.from_user.id, user_client=client_to_use, source_url=post_url)
             
             if files_sent == 0:
@@ -422,7 +405,7 @@ async def handle_download(bot: Client, message: Message, post_url: str, user_cli
                 if not success:
                     LOGGER(__name__).error(f"Failed to increment usage for user {message.from_user.id} after media group download")
                 
-                # Show completion message with buttons for all free users
+                # Show completion message for all users
                 user_type = db.get_user_type(message.from_user.id)
                 if user_type == 'free':
                     from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
@@ -435,6 +418,9 @@ async def handle_download(bot: Client, message: Message, post_url: str, user_cli
                         "✅ **Download complete**",
                         reply_markup=upgrade_keyboard
                     )
+                else:
+                    # Premium/Admin users get simple completion message
+                    await message.reply("✅ **Download complete**")
             
             return
 
@@ -548,7 +534,33 @@ async def handle_download(bot: Client, message: Message, post_url: str, user_cli
                 cleanup_download(media_path)
 
         elif chat_message.text or chat_message.caption:
-            await message.reply(parsed_text or parsed_caption)
+            # Send text message to user
+            text_content = parsed_text or parsed_caption
+            sent_msg = await message.reply(text_content)
+            
+            # Increment usage for text download
+            if increment_usage:
+                db.increment_usage(message.from_user.id)
+                
+                # Forward to dump channel using same method as videos/photos (RAM-efficient, no re-upload)
+                from helpers.utils import forward_to_dump_channel
+                await forward_to_dump_channel(bot, sent_msg, message.from_user.id, text_content, post_url)
+                
+                # Show completion message for free users
+                user_type = db.get_user_type(message.from_user.id)
+                if user_type == 'free':
+                    from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+                    upgrade_keyboard = InlineKeyboardMarkup([
+                        [InlineKeyboardButton("🎁 Watch Ad & Get 1 Download", callback_data="watch_ad_now")],
+                        [InlineKeyboardButton("💰 Upgrade to Premium", callback_data="upgrade_premium")]
+                    ])
+                    await message.reply(
+                        "✅ **Download complete**",
+                        reply_markup=upgrade_keyboard
+                    )
+                else:
+                    # Premium/Admin users get simple completion message
+                    await message.reply("✅ **Download complete**")
         else:
             LOGGER(__name__).warning(f"Message {message_id} in chat {resolved_chat_id} has no media/text - possible restricted content or empty message")
             await message.reply("**No media or text found in the post URL.**\n\nThe message may be:\n• Restricted/premium content\n• A forwarded message without media\n• Empty or deleted\n• Accessible only with premium account")
@@ -676,6 +688,7 @@ async def download_range(bot: Client, message: Message):
     loading = await message.reply(f"📥 **Downloading posts {start_id}–{end_id}…**")
 
     downloaded = skipped = failed = 0
+    processed_media_groups = set()  # Track processed media group IDs to avoid duplicates
 
     for msg_id in range(start_id, end_id + 1):
         url = f"{prefix}/{msg_id}"
@@ -690,6 +703,18 @@ async def download_range(bot: Client, message: Message):
             if not (has_media or has_text):
                 skipped += 1
                 continue
+
+            # CRITICAL FIX: Skip media group files already processed
+            # This prevents downloading the same media group 5+ times in batch
+            media_group_id = getattr(chat_msg, 'media_group_id', None)
+            if media_group_id and media_group_id in processed_media_groups:
+                # This message is part of an already-processed media group
+                skipped += 1
+                continue
+            
+            # Mark this media group as processed
+            if media_group_id:
+                processed_media_groups.add(media_group_id)
 
             task = track_task(handle_download(bot, message, url, client_to_use, False), message.from_user.id)
             try:
@@ -1533,14 +1558,29 @@ verify_attribution()
 
 if __name__ == "__main__":
     try:
-        LOGGER(__name__).info("Bot Started!")
-        bot.run()
-    except KeyboardInterrupt:
-        pass
-    except Exception as err:
-        LOGGER(__name__).error(err)
+        retry_count = 0
+        max_retries = 30  # Handle up to 30 retries (can cover 15+ minute floodwaits)
+        base_wait = 120  # Start with 120 second waits
+        
+        while retry_count < max_retries:
+            try:
+                LOGGER(__name__).info("Bot Started!")
+                bot.run()
+                break
+            except KeyboardInterrupt:
+                break
+            except Exception as err:
+                retry_count += 1
+                if retry_count < max_retries:
+                    # Linear backoff: increases by 60s each retry (120, 180, 240, ...)
+                    # This allows handling 15+ minute floodwaits gracefully
+                    wait_time = base_wait + (60 * retry_count)
+                    LOGGER(__name__).info(f"Retry {retry_count}/{max_retries} after {wait_time}s ({wait_time//60}m)")
+                    import time
+                    time.sleep(wait_time)
+                else:
+                    break
     finally:
-        # Gracefully disconnect all user sessions before shutdown
         try:
             import asyncio
             from helpers.session_manager import session_manager
@@ -1549,6 +1589,6 @@ if __name__ == "__main__":
                 loop.run_until_complete(session_manager.disconnect_all())
                 LOGGER(__name__).info("Disconnected all user sessions")
         except Exception as e:
-            LOGGER(__name__).error(f"Error disconnecting sessions: {e}")
+            pass
         
         LOGGER(__name__).info("Bot Stopped")

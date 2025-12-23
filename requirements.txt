@@ -37,3 +37,10 @@ pyrogram
 tgcrypto
 uvloop
 waitress
+cryptg
+flask
+psutil
+pyrogram
+tgcrypto
+uvloop
+waitress
