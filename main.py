@@ -35,6 +35,7 @@ from helpers.msg import (
     get_parsed_msg
 )
 
+from pyrogram_helpers import has_downloadable_media
 from config import PyroConf
 from logger import LOGGER
 from database_sqlite import db
@@ -101,24 +102,7 @@ def is_new_update(_, __, message: Message):
 new_updates_only = filters.create(is_new_update)
 
 
-# FIXED: Helper function for robust media detection
-def has_downloadable_media(message) -> bool:
-    """
-    Check if a Pyrogram Message has downloadable media.
-    More reliable than checking .media attribute which can be EMPTY or None.
-    """
-    if not message:
-        return False
-    return any([
-        getattr(message, 'photo', None),
-        getattr(message, 'video', None),
-        getattr(message, 'audio', None),
-        getattr(message, 'document', None),
-        getattr(message, 'voice', None),
-        getattr(message, 'video_note', None),
-        getattr(message, 'animation', None),
-        getattr(message, 'sticker', None)
-    ])
+
 
 
 def track_task(coro, user_id=None):
@@ -1575,17 +1559,20 @@ async def callback_handler(client: Client, callback_query: CallbackQuery):
 # Start queue processor in background when module loads
 def _init_queue():
     """Initialize queue processor on module load"""
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    loop.run_until_complete(download_manager.start_processor())
-    LOGGER(__name__).info("Download queue processor initialized")
+    try:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(download_manager.start_processor())
+        LOGGER(__name__).info("Download queue processor initialized")
+    except Exception as e:
+        LOGGER(__name__).error(f"Failed to initialize queue processor: {e}")
 
 # Schedule queue processor startup
 try:
     import threading
     threading.Thread(target=_init_queue, daemon=True).start()
-except:
-    LOGGER(__name__).warning("Could not start queue processor thread")
+except Exception as e:
+    LOGGER(__name__).warning(f"Could not start queue processor thread: {e}")
 
 # Verify bot attribution on startup
 verify_attribution()
