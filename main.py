@@ -60,9 +60,12 @@ IS_RENDER = bool(os.getenv('RENDER') or os.getenv('RENDER_EXTERNAL_URL'))
 IS_REPLIT = bool(os.getenv('REPLIT_DEPLOYMENT') or os.getenv('REPL_ID'))
 IS_CONSTRAINED = IS_RENDER or IS_REPLIT  # Low RAM environments
 
-# Aggressively reduce workers for constrained environments
-workers = 1 if IS_CONSTRAINED else 4
-concurrent = 2 if IS_CONSTRAINED else 4
+# Balance speed vs memory for constrained environments
+# Replit: Moderate increase to improve speed without excessive RAM usage
+# Max concurrent downloads is 1 per user (queue_manager.py line 88), max 10 users total
+# So real concurrency is 1-10 downloads, not the full 4 concurrent_transmissions
+workers = 2 if IS_CONSTRAINED else 8  # Balanced worker threads for message processing
+concurrent = 4 if IS_CONSTRAINED else 8  # 4 concurrent transmissions per session (safe for 512MB)
 
 bot = Client(
     "media_bot",
@@ -72,7 +75,7 @@ bot = Client(
     workers=workers,
     max_concurrent_transmissions=concurrent,
     parse_mode=ParseMode.MARKDOWN,
-    sleep_threshold=30,  # Reduce API call frequency
+    sleep_threshold=10,  # Reduced from 30 for faster API requests
     in_memory=True  # Don't write session files to disk
 )
 
@@ -1176,6 +1179,12 @@ async def get_premium_command(client: Client, message: Message):
         
         bot_domain = PyroConf.get_app_url()
         
+        # Check if user can view ad URL today (max 2 per day)
+        can_show, error_msg = ad_monetization.can_show_ad_link(message.from_user.id)
+        if not can_show:
+            await message.reply(error_msg)
+            return
+        
         verification_code, ad_url = ad_monetization.generate_ad_link(message.from_user.id, bot_domain)
         
         premium_text = (
@@ -1351,6 +1360,12 @@ async def callback_handler(client: Client, callback_query: CallbackQuery):
             await callback_query.answer("You already have premium subscription!", show_alert=True)
             return
         
+        # Check if user can view ad URL today (max 2 per day)
+        can_show, error_msg = ad_monetization.can_show_ad_link(user_id)
+        if not can_show:
+            await callback_query.answer(error_msg, show_alert=True)
+            return
+        
         bot_domain = PyroConf.get_app_url()
         verification_code, ad_url = ad_monetization.generate_ad_link(user_id, bot_domain)
         
@@ -1439,6 +1454,12 @@ async def callback_handler(client: Client, callback_query: CallbackQuery):
         
         if user_type == 'paid':
             await callback_query.answer("You already have premium subscription!", show_alert=True)
+            return
+        
+        # Check if user can view ad URL today (max 2 per day)
+        can_show, error_msg = ad_monetization.can_show_ad_link(user_id)
+        if not can_show:
+            await callback_query.answer(error_msg, show_alert=True)
             return
         
         bot_domain = PyroConf.get_app_url()

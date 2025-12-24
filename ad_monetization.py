@@ -80,14 +80,28 @@ class AdMonetization:
         # Grant ad downloads
         db.add_ad_downloads(user_id, PREMIUM_DOWNLOADS)
         
+        # Only increment ad URL view counter after SUCCESSFUL verification
+        # This way users don't waste a view if they fail to complete or enter wrong code
+        db.increment_ad_url_views(user_id)
+        
         LOGGER(__name__).info(f"User {user_id} successfully verified code {code}, granted {PREMIUM_DOWNLOADS} ad downloads")
         return True, f"✅ **Verification successful!**\n\nYou now have **{PREMIUM_DOWNLOADS} free download(s)**!"
+    
+    def can_show_ad_link(self, user_id: int) -> tuple[bool, str]:
+        """Check if user can view ad URL today (max 2 per day)"""
+        views_today = db.get_daily_ad_url_views(user_id)
+        if views_today >= 2:
+            return False, f"❌ **Daily ad limit reached!**\n\nYou can view ad URLs **2 times per day**.\n\nYou've already viewed {views_today} today.\n\n⏰ Try again tomorrow!"
+        return True, ""
     
     def generate_ad_link(self, user_id: int, bot_domain: str | None = None) -> tuple[str, str]:
         """
         Generate ad link - sends user to blog homepage with session
         Blog's JavaScript will automatically redirect to first verification page
         This way you can change verification pages in theme without updating bot code
+        
+        NOTE: Ad URL view counter is incremented ONLY after successful verification in verify_code()
+        This prevents wasting views if user fails to complete or enter wrong code
         """
         session_id = self.create_ad_session(user_id)
         
