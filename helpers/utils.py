@@ -907,10 +907,10 @@ async def _process_single_media_file(
     All parameters are passed explicitly to avoid holding references to Pyrogram Message objects.
     
     Args:
-        client_for_download: Telethon client for downloading
+        client_for_download: Pyrogram client for downloading
         bot: Bot client for uploading to user
         user_message: The user's original message (for reply context)
-        msg: The Telethon Message object to download (WILL BE USED AND RELEASED)
+        msg: The Pyrogram Message object to download (WILL BE USED AND RELEASED)
         download_path: Path to save the downloaded file
         idx: Current file index (1-based)
         total_files: Total number of files
@@ -1002,7 +1002,7 @@ async def processMediaGroup(chat_message, bot, message, user_id=None, user_clien
     timeout for the entire media group. This ensures large files don't starve smaller ones.
     
     RAM OPTIMIZATION: Message objects are NOT retained in lists. We extract message IDs first,
-    then re-fetch each message individually inside the loop. This prevents Telethon from
+    then re-fetch each message individually inside the loop. This prevents Pyrogram from
     caching large document objects (~4-12MB each) for the entire duration of media group processing.
     
     Args:
@@ -1037,7 +1037,7 @@ async def processMediaGroup(chat_message, bot, message, user_id=None, user_clien
     )
     
     # CRITICAL RAM FIX: Extract only message IDs, then immediately clear the message list
-    # This prevents Telethon Message objects (with cached document data ~4-12MB each) 
+    # This prevents Pyrogram Message objects (with cached document data ~4-12MB each) 
     # from being held in memory for the entire duration of media group processing
     message_ids = []
     if grouped_id:
@@ -1205,7 +1205,7 @@ async def processMediaGroup(chat_message, bot, message, user_id=None, user_clien
             if media_path is not None:
                 del media_path
                 media_path = None
-            # Force garbage collection after each file to release Telethon buffers
+            # Force garbage collection after each file to release Pyrogram buffers
             gc.collect()
 
     # Cleanup throttle data for this progress message
