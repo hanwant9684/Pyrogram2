@@ -1,20 +1,16 @@
 # Copyright (C) @Wolfy004
 # Migrated to Pyrogram
-# FIXED VERSION - Made async compatible, handles entities parameter
 
-from typing import Tuple, Union
+from typing import Optional, List, Tuple, Union
 from pyrogram_helpers import parse_message_link
 
-
-# FIX: Made async and accepts optional entities parameter for backward compatibility
-async def get_parsed_msg(text: str, entities=None) -> str:
+async def get_parsed_msg(text: str, entities: Optional[List] = None) -> str:
     """
-    Parse message text.
-    Pyrogram handles entities automatically, so this just returns the text.
+    Parse message text with entities
     
     Args:
         text: Message text
-        entities: Optional entities (ignored, kept for backward compatibility)
+        entities: List of MessageEntity objects
         
     Returns:
         Parsed text (plain text, entities are preserved by Pyrogram)
@@ -22,7 +18,6 @@ async def get_parsed_msg(text: str, entities=None) -> str:
     if not text:
         return ""
     return text
-
 
 def getChatMsgID(link: str) -> Tuple[Union[int, str], int]:
     """
@@ -58,7 +53,6 @@ def getChatMsgID(link: str) -> Tuple[Union[int, str], int]:
     
     return chat_id, message_id
 
-
 def get_file_name(message_id: int, message) -> str:
     """
     Get filename from message media (Pyrogram Message object)
@@ -70,7 +64,7 @@ def get_file_name(message_id: int, message) -> str:
     Returns:
         Filename string
     """
-    if not message:
+    if not message or not message.media:
         return f"{message_id}"
     
     # Document (file, video, audio, etc.)
@@ -100,15 +94,10 @@ def get_file_name(message_id: int, message) -> str:
     
     # Video
     elif message.video:
-        # Try to get original filename if available
-        if hasattr(message.video, 'file_name') and message.video.file_name:
-            return message.video.file_name
         return f"{message_id}.mp4"
     
     # Audio
     elif message.audio:
-        if hasattr(message.audio, 'file_name') and message.audio.file_name:
-            return message.audio.file_name
         return f"{message_id}.mp3"
     
     # Voice
@@ -122,9 +111,5 @@ def get_file_name(message_id: int, message) -> str:
     # Sticker
     elif message.sticker:
         return f"{message_id}.webp"
-    
-    # Video note
-    elif message.video_note:
-        return f"{message_id}.mp4"
     
     return f"{message_id}"
