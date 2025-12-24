@@ -1226,7 +1226,7 @@ async def verify_premium_command(client: Client, message: Message):
         
         verification_code = message.command[1].strip()
         
-        success, msg = ad_monetization.verify_and_grant_downloads(message.from_user.id, verification_code)
+        success, msg = ad_monetization.verify_code(verification_code, message.from_user.id)
         
         if success:
             await message.reply(
