@@ -1,19 +1,20 @@
 # Copyright (C) @Wolfy004
 # Migrated to Pyrogram
-# FIXED VERSION - Removed unused parameter
+# FIXED VERSION - Made async compatible, handles entities parameter
 
 from typing import Tuple, Union
 from pyrogram_helpers import parse_message_link
 
 
-# FIX: Removed async and unused entities parameter - this is a simple sync function
-def get_parsed_msg(text: str) -> str:
+# FIX: Made async and accepts optional entities parameter for backward compatibility
+async def get_parsed_msg(text: str, entities=None) -> str:
     """
     Parse message text.
     Pyrogram handles entities automatically, so this just returns the text.
     
     Args:
         text: Message text
+        entities: Optional entities (ignored, kept for backward compatibility)
         
     Returns:
         Parsed text (plain text, entities are preserved by Pyrogram)
@@ -69,7 +70,7 @@ def get_file_name(message_id: int, message) -> str:
     Returns:
         Filename string
     """
-    if not message or not message.media:
+    if not message:
         return f"{message_id}"
     
     # Document (file, video, audio, etc.)
@@ -99,10 +100,15 @@ def get_file_name(message_id: int, message) -> str:
     
     # Video
     elif message.video:
+        # Try to get original filename if available
+        if hasattr(message.video, 'file_name') and message.video.file_name:
+            return message.video.file_name
         return f"{message_id}.mp4"
     
     # Audio
     elif message.audio:
+        if hasattr(message.audio, 'file_name') and message.audio.file_name:
+            return message.audio.file_name
         return f"{message_id}.mp3"
     
     # Voice
@@ -116,5 +122,9 @@ def get_file_name(message_id: int, message) -> str:
     # Sticker
     elif message.sticker:
         return f"{message_id}.webp"
+    
+    # Video note
+    elif message.video_note:
+        return f"{message_id}.mp4"
     
     return f"{message_id}"
