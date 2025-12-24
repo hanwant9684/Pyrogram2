@@ -456,53 +456,47 @@ async def handle_download(bot: Client, message: Message, post_url: str, user_cli
             # CRITICAL FIX: Use client_to_use for download (user's client for private channels)
             # Create sync progress callback with throttling to avoid RAM overhead
             last_update = {"time": time(), "percent": 0}
-            def download_progress_callback(current, total):
-                """Sync callback with throttling - update max every 2 seconds or 5% change"""
-                try:
-                    if total > 0:
-                        now = time()
-                        percent = int((current / total) * 100)
-                        elapsed = now - start_time
-                        
-                        # Throttle updates: only update if 5+ seconds passed OR 10% progress changed OR completion
-                        should_update = (
-                            (now - last_update["time"] >= 5) or  # 5 seconds minimum between updates
-                            (percent - last_update["percent"] >= 10) or  # 10% progress change
-                            (percent == 100)  # Always show completion
-                        )
-                        
-                        if should_update and elapsed > 0:
-                            last_update["time"] = now
-                            last_update["percent"] = percent
+            def create_download_progress_callback():
+                def download_progress(current, total):
+                    try:
+                        if total > 0 and progress_message:
+                            now = time()
+                            percent = int((current / total) * 100)
+                            elapsed = now - start_time
                             
-                            speed_mbps = (current / elapsed) / 1024 / 1024
-                            remaining_time = (total - current) / (current / elapsed) if current > 0 else 0
-                            eta_str = f"{int(remaining_time)}s" if remaining_time < 60 else f"{int(remaining_time / 60)}m"
+                            # Throttle updates: only update if 5+ seconds passed OR 10% progress changed OR completion
+                            should_update = (
+                                (now - last_update["time"] >= 5) or  # 5 seconds minimum between updates
+                                (percent - last_update["percent"] >= 10) or  # 10% progress change
+                                (percent == 100)  # Always show completion
+                            )
                             
-                            # Update message (non-blocking, safe for RAM)
-                            try:
-                                import asyncio
-                                async def update_progress():
-                                    try:
-                                        await progress_message.edit_text(
-                                            f"**📥 Downloading: {percent}%**\n"
-                                            f"Speed: {speed_mbps:.1f} MB/s\n"
-                                            f"ETA: {eta_str}"
-                                        )
-                                    except Exception as e:
-                                        LOGGER(__name__).debug(f"Progress update failed: {e}")
+                            if should_update and elapsed > 0:
+                                last_update["time"] = now
+                                last_update["percent"] = percent
                                 
-                                asyncio.create_task(update_progress())
-                            except Exception as e:
-                                LOGGER(__name__).debug(f"Failed to create progress task: {e}")
-                except:
-                    pass
+                                speed_mbps = (current / elapsed) / 1024 / 1024
+                                remaining_time = (total - current) / (current / elapsed) if current > 0 else 0
+                                eta_str = f"{int(remaining_time)}s" if remaining_time < 60 else f"{int(remaining_time / 60)}m"
+                                
+                                try:
+                                    import asyncio
+                                    asyncio.create_task(progress_message.edit_text(
+                                        f"**📥 Downloading: {percent}%**\n"
+                                        f"Speed: {speed_mbps:.1f} MB/s\n"
+                                        f"ETA: {eta_str}"
+                                    ))
+                                except:
+                                    pass
+                    except:
+                        pass
+                return download_progress
             
             media_path = await download_media_fast(
                 client=client_to_use,
                 message=chat_message,
                 file=download_path,
-                progress_callback=download_progress_callback
+                progress_callback=create_download_progress_callback()
             )
             LOGGER(__name__).info(f"Downloaded media: {media_path}")
 
