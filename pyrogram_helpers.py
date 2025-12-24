@@ -2,7 +2,6 @@
 # Migration helpers for Pyrogram
 
 from typing import List, Optional, Tuple
-import re
 
 def parse_command(text: str) -> List[str]:
     """
@@ -80,116 +79,46 @@ def parse_message_link(link: str) -> Tuple[Optional[str], Optional[int], Optiona
         
         # Format: https://t.me/USERNAME/MESSAGE_ID or /USERNAME/THREAD_ID/MESSAGE_ID
         else:
-            # Check if this is a threaded message by trying to parse the middle part as int
-            # If it fails, it's a simple username/message format
-            if len(parts) >= 6:  # Potentially with thread
+            if len(parts) >= 5:  # With thread (https://t.me/USERNAME/THREAD_ID/MESSAGE_ID)
+                # Check if second-to-last part is numeric (thread_id)
                 try:
-                    username = parts[-3]
                     thread_id = int(parts[-2])
                     message_id = int(parts[-1])
+                    username = parts[-3]
                     return username, thread_id, message_id
                 except ValueError:
-                    pass  # Fall through to simple format
+                    pass
             
-            # Simple format: username/message_id
-            if len(parts) >= 4:  # Without thread
-                username = parts[-2]
+            if len(parts) >= 4:  # Without thread (https://t.me/USERNAME/MESSAGE_ID)
                 message_id = int(parts[-1])
+                username = parts[-2]
                 return username, None, message_id
-    
     except (ValueError, IndexError):
         pass
     
     return None, None, None
 
-def format_time(seconds: int) -> str:
-    """
-    Format seconds into readable time string
-    
-    Args:
-        seconds: Time in seconds
-        
-    Returns:
-        Formatted time string (e.g., "1h 23m 45s")
-    """
-    if seconds < 0:
-        return "0s"
-    
-    hours = seconds // 3600
-    minutes = (seconds % 3600) // 60
-    secs = seconds % 60
-    
-    parts = []
-    if hours > 0:
-        parts.append(f"{hours}h")
-    if minutes > 0:
-        parts.append(f"{minutes}m")
-    if secs > 0 or not parts:
-        parts.append(f"{secs}s")
-    
-    return " ".join(parts)
 
-def format_size(bytes_size: int) -> str:
+def has_downloadable_media(message) -> bool:
     """
-    Format bytes into readable size string
+    FIXED: Check if a Pyrogram Message has downloadable media.
+    More reliable than checking .media attribute which can be EMPTY or None.
     
     Args:
-        bytes_size: Size in bytes
+        message: Pyrogram Message object
         
     Returns:
-        Formatted size string (e.g., "1.23 GB")
+        bool: True if message has downloadable media
     """
-    if bytes_size < 0:
-        return "0 B"
-    
-    units = ['B', 'KB', 'MB', 'GB', 'TB']
-    size = float(bytes_size)
-    unit_index = 0
-    
-    while size >= 1024 and unit_index < len(units) - 1:
-        size /= 1024
-        unit_index += 1
-    
-    if unit_index == 0:
-        return f"{int(size)} {units[unit_index]}"
-    else:
-        return f"{size:.2f} {units[unit_index]}"
-
-async def get_display_name(entity) -> str:
-    """
-    Get display name for a user/chat entity (Pyrogram User/Chat)
-    
-    Args:
-        entity: Pyrogram entity (User, Chat, Channel)
-        
-    Returns:
-        Display name
-    """
-    if hasattr(entity, 'first_name'):
-        name = entity.first_name or ""
-        if hasattr(entity, 'last_name') and entity.last_name:
-            name += f" {entity.last_name}"
-        return name.strip() or "Unknown"
-    elif hasattr(entity, 'title'):
-        return entity.title or "Unknown"
-    return "Unknown"
-
-def extract_code_from_message(text: str) -> Optional[str]:
-    """
-    Extract code/OTP from message text
-    
-    Args:
-        text: Message text
-        
-    Returns:
-        Extracted code or None
-    """
-    if not text:
-        return None
-    
-    # Look for numeric codes
-    match = re.search(r'\b(\d{5,6})\b', text)
-    if match:
-        return match.group(1)
-    
-    return None
+    if not message:
+        return False
+    return any([
+        getattr(message, 'photo', None),
+        getattr(message, 'video', None),
+        getattr(message, 'audio', None),
+        getattr(message, 'document', None),
+        getattr(message, 'voice', None),
+        getattr(message, 'video_note', None),
+        getattr(message, 'animation', None),
+        getattr(message, 'sticker', None)
+    ])

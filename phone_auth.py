@@ -18,6 +18,9 @@ from logger import LOGGER
 class PhoneAuthHandler:
     """Handle phone number based authentication for users"""
 
+    # Maximum pending auth sessions (each uses 60-70MB RAM)
+    MAX_PENDING_SESSIONS = 5  # Safe limit for 512MB RAM
+
     def __init__(self, api_id, api_hash):
         self.api_id = api_id
         self.api_hash = api_hash
@@ -29,6 +32,16 @@ class PhoneAuthHandler:
         Send OTP to user's phone number
         Returns: (success: bool, message: str, phone_code_hash: str or None)
         """
+        # FIXED: Cancel any existing pending auth for this user first
+        if user_id in self.pending_auth:
+            LOGGER(__name__).info(f"Cancelling existing pending auth for user {user_id} before new OTP")
+            await self.cancel_auth(user_id)
+        
+        # FIXED: Check if server is at capacity
+        if len(self.pending_auth) >= self.MAX_PENDING_SESSIONS:
+            LOGGER(__name__).warning(f"Max pending sessions reached ({self.MAX_PENDING_SESSIONS}), rejecting new auth")
+            return False, "⏳ **Server is busy with other login requests.**\n\nPlease wait 1-2 minutes and try again.", None
+        
         client = None
         try:
             # Create Pyrogram client for authentication
@@ -208,6 +221,10 @@ class PhoneAuthHandler:
     def has_pending_auth(self, user_id: int) -> bool:
         """Check if user has pending authentication"""
         return user_id in self.pending_auth
+    
+    def get_pending_count(self) -> int:
+        """Get number of pending auth sessions"""
+        return len(self.pending_auth)
     
     def start_cleanup_task(self):
         """Start the cleanup task (call this after event loop is running)"""

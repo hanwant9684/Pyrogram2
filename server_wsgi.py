@@ -1267,10 +1267,10 @@ async def periodic_gc_task():
 async def cleanup_watchdog_task():
     """Cleanup watchdog to prevent memory leaks from ad sessions and orphaned downloads.
     Runs every 5 minutes to purge:
-        pass
     1. Expired ad sessions (>30 min old) and their cache entries
     2. Orphaned download tasks that failed to clean up properly
     """
+
     import asyncio
     from logger import LOGGER
     
