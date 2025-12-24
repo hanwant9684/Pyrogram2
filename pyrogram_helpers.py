@@ -55,6 +55,7 @@ def parse_message_link(link: str) -> Tuple[Optional[str], Optional[int], Optiona
     Returns:
         Tuple of (chat_id_or_username, message_thread_id, message_id)
     """
+    import re
     link = link.strip()
     
     # Remove query parameters
@@ -93,7 +94,7 @@ def parse_message_link(link: str) -> Tuple[Optional[str], Optional[int], Optiona
                 message_id = int(parts[-1])
                 username = parts[-2]
                 return username, None, message_id
-    except (ValueError, IndexError):
+    except (ValueError, IndexError) as e:
         pass
     
     return None, None, None

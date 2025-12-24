@@ -1,6 +1,3 @@
-# Copyright (C) @Wolfy004
-# Channel: https://t.me/Wolfy004
-
 import secrets
 from datetime import datetime, timedelta
 
@@ -26,7 +23,7 @@ class AdMonetization:
         LOGGER(__name__).info(f"Created ad session {session_id} for user {user_id}")
         return session_id
     
-    def verify_ad_completion(self, session_id: str) -> tuple:
+    def verify_ad_completion(self, session_id: str) -> tuple[bool, str, str]:
         """Verify that user clicked through URL shortener and generate verification code"""
         session_data = db.get_ad_session(session_id)
         
@@ -61,7 +58,7 @@ class AdMonetization:
         LOGGER(__name__).info(f"Generated verification code {code} for user {user_id}")
         return code
     
-    def verify_code(self, code: str, user_id: int) -> tuple:
+    def verify_code(self, code: str, user_id: int) -> tuple[bool, str]:
         """Verify user's code and grant free downloads"""
         code = code.upper().strip()
         
@@ -86,7 +83,7 @@ class AdMonetization:
         LOGGER(__name__).info(f"User {user_id} successfully verified code {code}, granted {PREMIUM_DOWNLOADS} ad downloads")
         return True, f"✅ **Verification successful!**\n\nYou now have **{PREMIUM_DOWNLOADS} free download(s)**!"
     
-    def generate_ad_link(self, user_id: int, bot_domain: str = None) -> tuple:
+    def generate_ad_link(self, user_id: int, bot_domain: str | None = None) -> tuple[str, str]:
         """
         Generate ad link - sends user to blog homepage with session
         Blog's JavaScript will automatically redirect to first verification page
@@ -110,5 +107,4 @@ class AdMonetization:
         """Get number of downloads given for watching ads"""
         return PREMIUM_DOWNLOADS
 
-# Global instance
 ad_monetization = AdMonetization()

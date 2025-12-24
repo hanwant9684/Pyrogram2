@@ -99,6 +99,7 @@ async def show_legal_acceptance(client, message):
     """Show legal acceptance screen to user"""
     try:
         summary = get_legal_summary()
+        # FIXED: Use InlineKeyboardButton with callback_data parameter (Pyrogram style)
         markup = InlineKeyboardMarkup([
             [
                 InlineKeyboardButton("📜 Terms", callback_data="legal_view_terms"),

@@ -2,49 +2,11 @@
 # Channel: https://t.me/Wolfy004
 
 import asyncio
-import time
 from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from pyrogram_helpers import parse_command, get_command_args
 from access_control import admin_only, register_user
 from database_sqlite import db
 from logger import LOGGER
-
-# Store pending broadcasts with expiry time (10 minutes)
-# Format: {admin_id: {'data': broadcast_data, 'expires_at': timestamp}}
-_pending_broadcasts = {}
-BROADCAST_EXPIRY_SECONDS = 600  # 10 minutes
-
-def _cleanup_expired_broadcasts():
-    """Remove expired broadcast data to prevent memory leaks"""
-    current_time = time.time()
-    expired_keys = [
-        key for key, value in _pending_broadcasts.items()
-        if current_time > value.get('expires_at', 0)
-    ]
-    for key in expired_keys:
-        del _pending_broadcasts[key]
-        LOGGER(__name__).info(f"Cleaned up expired broadcast data for admin {key}")
-
-def _store_pending_broadcast(admin_id: int, broadcast_data: dict):
-    """Store pending broadcast with expiry"""
-    _cleanup_expired_broadcasts()  # Clean up old ones first
-    _pending_broadcasts[admin_id] = {
-        'data': broadcast_data,
-        'expires_at': time.time() + BROADCAST_EXPIRY_SECONDS
-    }
-
-def _get_pending_broadcast(admin_id: int) -> dict:
-    """Get pending broadcast data if not expired"""
-    _cleanup_expired_broadcasts()
-    pending = _pending_broadcasts.get(admin_id)
-    if pending:
-        return pending.get('data')
-    return None
-
-def _remove_pending_broadcast(admin_id: int):
-    """Remove pending broadcast after use"""
-    if admin_id in _pending_broadcasts:
-        del _pending_broadcasts[admin_id]
 
 @admin_only
 async def add_admin_command(client, message):
@@ -62,7 +24,7 @@ async def add_admin_command(client, message):
             try:
                 user_info = await client.get_chat(target_user_id)
                 user_name = user_info.first_name or "Unknown"
-            except Exception:
+            except:
                 user_name = str(target_user_id)
 
             await client.send_message(message.chat.id, f"✅ **Successfully added {user_name} as admin.**")
@@ -201,6 +163,7 @@ async def broadcast_command(client, message):
     """Broadcast message/media to all users or specific users
     
     Usage:
+        pass
     - All users: /broadcast <message>
     - Specific users: /broadcast @user_id1,user_id2 <message>
     - Media: Reply to a photo/video/audio/document/GIF with /broadcast [@user_ids] <optional caption>
@@ -302,6 +265,7 @@ async def broadcast_command(client, message):
         else:
             target_text = "**Target:** All users"
         
+        # FIXED: Use InlineKeyboardButton with callback_data parameter (Pyrogram style)
         confirm_markup = InlineKeyboardMarkup([
             [
                 InlineKeyboardButton("✅ Send Broadcast", callback_data=f"broadcast_confirm:{message.from_user.id}"),
@@ -315,8 +279,7 @@ async def broadcast_command(client, message):
             reply_markup=confirm_markup
         )
         
-        # Store with expiry instead of attaching to client
-        _store_pending_broadcast(message.from_user.id, broadcast_data)
+        setattr(client, f'pending_broadcast_{message.from_user.id}', broadcast_data)
         
     except Exception as e:
         await client.send_message(message.chat.id, f"❌ **Error: {str(e)}**")
@@ -333,7 +296,6 @@ async def execute_broadcast(client, admin_id: int, broadcast_data: dict):
     
     total_users = len(users_to_send)
     successful_sends = 0
-    failed_users = []
 
     if total_users == 0:
         return 0, 0
@@ -386,14 +348,7 @@ async def execute_broadcast(client, admin_id: int, broadcast_data: dict):
             successful_sends += 1
             await asyncio.sleep(0.1)
         except Exception as e:
-            # Log failed sends instead of silently continuing
-            failed_users.append(user_id)
-            LOGGER(__name__).warning(f"Failed to send broadcast to user {user_id}: {e}")
             continue
-    
-    # Log summary of failures
-    if failed_users:
-        LOGGER(__name__).warning(f"Broadcast failed for {len(failed_users)} users: {failed_users[:10]}{'...' if len(failed_users) > 10 else ''}")
 
     broadcast_content = broadcast_data.get('message') or broadcast_data.get('caption') or f"[{broadcast_type.upper()} broadcast]"
     db.save_broadcast(broadcast_content, admin_id, total_users, successful_sends)
@@ -410,9 +365,6 @@ async def admin_stats_command(client, message, download_mgr=None):
         if download_mgr:
             active_downloads = len(download_mgr.active_downloads)
 
-        # Include pending broadcasts count
-        pending_broadcasts = len(_pending_broadcasts)
-
         stats_text = (
             "👑 **ADMIN DASHBOARD**\n"
             "——————————————————————————\n\n"
@@ -424,8 +376,7 @@ async def admin_stats_command(client, message, download_mgr=None):
             f"🔐 Admins: `{stats.get('admin_count', 0)}`\n\n"
             "📈 **Download Activity:**\n"
             f"📥 Today: `{stats.get('today_downloads', 0)}`\n"
-            f"⚡ Active: `{active_downloads}`\n"
-            f"📢 Pending Broadcasts: `{pending_broadcasts}`\n\n"
+            f"⚡ Active: `{active_downloads}`\n\n"
             "——————————————————————————\n\n"
             "⚙️ **Quick Admin Actions:**\n"
             "• `/killall` - Cancel all downloads\n"
@@ -483,7 +434,6 @@ async def broadcast_callback_handler(client, callback_query):
     user_id = callback_query.from_user.id
 
     if data == "broadcast_cancel":
-        _remove_pending_broadcast(user_id)
         await callback_query.edit_message_text("❌ **Broadcast cancelled.**")
         return
 
@@ -494,35 +444,25 @@ async def broadcast_callback_handler(client, callback_query):
             await callback_query.answer("❌ You are not authorized to confirm this broadcast.", show_alert=True)
             return
 
-        # Get from our storage instead of client attribute
-        broadcast_data = _get_pending_broadcast(admin_id)
+        broadcast_data = getattr(client, f'pending_broadcast_{admin_id}', None)
 
         if not broadcast_data:
-            await callback_query.edit_message_text("❌ **Broadcast data not found or expired. Please try again.**")
+            await callback_query.edit_message_text("❌ **Broadcast data not found. Please try again.**")
             return
 
         await callback_query.edit_message_text("📡 **Sending broadcast... Please wait.**")
 
         total_users, successful_sends = await execute_broadcast(client, admin_id, broadcast_data)
 
-        # Clean up
-        _remove_pending_broadcast(admin_id)
+        if hasattr(client, f'pending_broadcast_{admin_id}'):
+            delattr(client, f'pending_broadcast_{admin_id}')
 
-        if total_users > 0:
-            success_rate = (successful_sends / total_users * 100)
-            result_text = (
-                f"✅ **Broadcast Completed!**\n\n"
-                f"**Total Users:** `{total_users}`\n"
-                f"**Successful Sends:** `{successful_sends}`\n"
-                f"**Failed Sends:** `{total_users - successful_sends}`\n"
-                f"**Success Rate:** `{success_rate:.1f}%`"
-            )
-        else:
-            result_text = "✅ **Broadcast Completed!**\n\n**No users to send to.**"
+        result_text = (
+            f"✅ **Broadcast Completed!**\n\n"
+            f"**Total Users:** `{total_users}`\n"
+            f"**Successful Sends:** `{successful_sends}`\n"
+            f"**Failed Sends:** `{total_users - successful_sends}`\n"
+            f"**Success Rate:** `{(successful_sends/total_users*100):.1f}%`" if total_users > 0 else "**Success Rate:** `0%`"
+        )
 
         await callback_query.edit_message_text(result_text)
-
-def get_pending_broadcasts_count():
-    """Get count of pending broadcasts (for monitoring)"""
-    _cleanup_expired_broadcasts()
-    return len(_pending_broadcasts)

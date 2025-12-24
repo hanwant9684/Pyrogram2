@@ -5,14 +5,6 @@ import traceback
 from datetime import datetime
 from logger import LOGGER
 
-# Detect constrained environment once at module load
-IS_CONSTRAINED = bool(
-    os.getenv('RENDER') or 
-    os.getenv('RENDER_EXTERNAL_URL') or 
-    os.getenv('REPLIT_DEPLOYMENT') or 
-    os.getenv('REPL_ID')
-)
-
 class MemoryMonitor:
     def __init__(self):
         self.process = psutil.Process()
@@ -27,21 +19,10 @@ class MemoryMonitor:
         
         # Dedicated memory log file for debugging OOM issues on Render
         self.memory_log_file = "memory_debug.log"
-        
-        # FIXED: Only use file logging in non-constrained environments
-        # or when memory is critical (to save I/O overhead)
-        self._file_logging_enabled = not IS_CONSTRAINED
-        self._write_buffer = []  # Buffer writes to reduce I/O
-        self._buffer_size = 10  # Flush after 10 entries
-        
-        if self._file_logging_enabled:
-            self._init_memory_log()
+        self._init_memory_log()
     
     def _init_memory_log(self):
         """Initialize dedicated memory log file"""
-        if not self._file_logging_enabled:
-            return
-            
         try:
             # Check if file exists (indicates recovery from crash)
             recovering_from_crash = os.path.exists(self.memory_log_file)
@@ -63,50 +44,23 @@ class MemoryMonitor:
                     f.write("=" * 80 + "\n\n")
         except Exception as e:
             self.logger.error(f"Failed to initialize memory log file: {e}")
-            self._file_logging_enabled = False
     
     def _write_to_memory_log(self, message, force_write=False):
         """Write critical memory events to dedicated log file.
         Only writes when memory is critical or forced.
-        Uses buffering to reduce I/O overhead.
         """
-        # Skip file logging entirely in constrained environments unless critical
-        if IS_CONSTRAINED and not force_write:
-            return
-            
         try:
-            mem = self.get_memory_info()
-            
-            # Only log critical memory events (>400MB) or forced writes
-            if not force_write and mem['rss_mb'] < 400:
-                return
+            if not force_write:
+                mem = self.get_memory_info()
+                if mem['rss_mb'] < 400:
+                    return
             
             timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-            log_entry = f"[{timestamp}] {message}\n"
-            
-            # Buffer writes for efficiency
-            self._write_buffer.append(log_entry)
-            
-            # Flush buffer if full or if this is a forced/critical write
-            if force_write or len(self._write_buffer) >= self._buffer_size or mem['rss_mb'] > 450:
-                self._flush_buffer()
-                
+            with open(self.memory_log_file, 'a') as f:
+                f.write(f"[{timestamp}] {message}\n")
+                f.flush()
         except Exception as e:
             self.logger.error(f"Failed to write to memory log: {e}")
-    
-    def _flush_buffer(self):
-        """Flush buffered writes to file"""
-        if not self._write_buffer or not self._file_logging_enabled:
-            return
-            
-        try:
-            with open(self.memory_log_file, 'a') as f:
-                f.writelines(self._write_buffer)
-                f.flush()
-            self._write_buffer.clear()
-        except Exception as e:
-            self.logger.error(f"Failed to flush memory log buffer: {e}")
-            self._write_buffer.clear()  # Clear anyway to prevent memory buildup
         
     def get_memory_info(self):
         memory_info = self.process.memory_info()
@@ -302,8 +256,6 @@ class MemoryMonitor:
                     
             except asyncio.CancelledError:
                 self.logger.info("Periodic memory monitor task cancelled")
-                # Flush any remaining buffered logs before exit
-                self._flush_buffer()
                 break
             except Exception as e:
                 self.logger.error(f"Periodic monitor error: {e}")
