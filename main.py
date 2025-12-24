@@ -482,13 +482,19 @@ async def handle_download(bot: Client, message: Message, post_url: str, user_cli
                             # Update message (non-blocking, safe for RAM)
                             try:
                                 import asyncio
-                                asyncio.create_task(progress_message.edit_text(
-                                    f"**📥 Downloading: {percent}%**\n"
-                                    f"Speed: {speed_mbps:.1f} MB/s\n"
-                                    f"ETA: {eta_str}"
-                                ))
-                            except:
-                                pass
+                                async def update_progress():
+                                    try:
+                                        await progress_message.edit_text(
+                                            f"**📥 Downloading: {percent}%**\n"
+                                            f"Speed: {speed_mbps:.1f} MB/s\n"
+                                            f"ETA: {eta_str}"
+                                        )
+                                    except Exception as e:
+                                        LOGGER(__name__).debug(f"Progress update failed: {e}")
+                                
+                                asyncio.create_task(update_progress())
+                            except Exception as e:
+                                LOGGER(__name__).debug(f"Failed to create progress task: {e}")
                 except:
                     pass
             
