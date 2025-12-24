@@ -185,9 +185,9 @@ async def start(_, message: Message):
         "   📥 1 free download per ad session\n"
         "   📺 Complete quick verification steps\n"
         "   ♻️ Repeat anytime!\n"
-        "   👉 Use: `/getpremium`\n\n"
-        "💰 **Option 2: Paid ($1/month)**\n"
-        "   ⭐ 30 days unlimited access\n"
+        "   👉 Use: `/watchad`\n\n"
+        "💰 **Option 2: Paid ($2/month)**\n"
+        "   ⭐ 7/15/30 days unlimited access\n"
         "   🚀 Priority downloads\n"
         "   📦 Batch download support\n"
         "   👉 Use: `/upgrade`\n\n"
@@ -239,8 +239,8 @@ async def help_command(_, message: Message):
             "   📺 Videos • 🖼️ Photos • 🎵 Audio • 📄 Documents\n\n"
             "**Batch Download:**\n"
             "   `/bdl <start_link> <end_link>`\n"
-            "   💡 Example: `/bdl https://t.me/channel/100 https://t.me/channel/120`\n"
-            "   📦 Downloads all posts from 100 to 120 (max 20)\n\n"
+            "   💡 Example: `/bdl https://t.me/channel/100 https://t.me/channel/300`\n"
+            "   📦 Downloads all posts from 100 to 300 (max 200)\n\n"
             "━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
             "🚀 **Queue System:**\n\n"
             "   👑 **Premium Priority** - Jump ahead in queue!\n"
@@ -260,7 +260,7 @@ async def help_command(_, message: Message):
             "💡 **Your Benefits:**\n"
             "   ✅ Unlimited downloads\n"
             "   ✅ Priority queue access\n"
-            "   ✅ Batch download (up to 20 posts)\n"
+            "   ✅ Batch download (up to 200 posts)\n"
             "   ✅ No daily limits"
         )
     else:
@@ -278,12 +278,12 @@ async def help_command(_, message: Message):
             "━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
             "💎 **Get More Downloads:**\n\n"
             "🎁 **FREE Downloads (Watch Ads):**\n"
-            "   `/getpremium` - Get 1 free download\n"
+            "   `/watchad` - Watch ad & Get 5 Download\n"
             "   📺 Complete verification steps\n"
             "   ♻️ Repeat anytime!\n\n"
-            "💰 **Paid Premium ($1/month):**\n"
+            "💰 **Paid Premium ($2/month):**\n"
             "   `/upgrade` - View payment options\n"
-            "   ⭐ 30 days unlimited access\n"
+            "   ⭐ 7/15/30 days unlimited access\n"
             "   🚀 Priority downloads\n"
             "   📦 Batch download support\n\n"
             "━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
@@ -431,7 +431,7 @@ async def handle_download(bot: Client, message: Message, post_url: str, user_cli
                 if user_type == 'free':
                     from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
                     upgrade_keyboard = InlineKeyboardMarkup([
-                        [InlineKeyboardButton("🎁 Watch Ad & Get 1 Download", callback_data="watch_ad_now")],
+                        [InlineKeyboardButton("🎁 Watch ad & Get 5 Download", callback_data="watch_ad_now")],
                         [InlineKeyboardButton("💰 Upgrade to Premium", callback_data="upgrade_premium")]
                     ])
                     
@@ -547,7 +547,7 @@ async def handle_download(bot: Client, message: Message, post_url: str, user_cli
                     if user_type == 'free':
                         from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
                         upgrade_markup = InlineKeyboardMarkup([
-                            [InlineKeyboardButton("🎁 Watch Ad & Get 1 Download", callback_data="watch_ad_now")],
+                            [InlineKeyboardButton("🎁 Watch ad & Get 5 Download", callback_data="watch_ad_now")],
                             [InlineKeyboardButton("💰 Upgrade to Premium", callback_data="upgrade_premium")]
                         ])
                         await message.reply(
@@ -579,7 +579,7 @@ async def handle_download(bot: Client, message: Message, post_url: str, user_cli
                 if user_type == 'free':
                     from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
                     upgrade_keyboard = InlineKeyboardMarkup([
-                        [InlineKeyboardButton("🎁 Watch Ad & Get 1 Download", callback_data="watch_ad_now")],
+                        [InlineKeyboardButton("🎁 Watch ad & Get 5 Download", callback_data="watch_ad_now")],
                         [InlineKeyboardButton("💰 Upgrade to Premium", callback_data="upgrade_premium")]
                     ])
                     await message.reply(
@@ -660,7 +660,7 @@ async def download_range(bot: Client, message: Message):
             "🚀 **Batch Download Process**\n"
             "`/bdl start_link end_link`\n\n"
             "💡 **Example:**\n"
-            "`/bdl https://t.me/mychannel/100 https://t.me/mychannel/120`"
+            "`/bdl https://t.me/mychannel/100 https://t.me/mychannel/300`"
         )
         return
 
@@ -686,12 +686,12 @@ async def download_range(bot: Client, message: Message):
     if start_id > end_id:
         return await message.reply("**❌ Invalid range: start ID cannot exceed end ID.**")
     
-    # Limit batch to 20 posts at a time
+    # Limit batch to 200 posts at a time
     batch_count = end_id - start_id + 1
-    if batch_count > 20:
+    if batch_count > 200:
         return await message.reply(
             f"**❌ Batch limit exceeded!**\n\n"
-            f"You requested `{batch_count}` posts, but the maximum is **20 posts** at a time.\n\n"
+            f"You requested `{batch_count}` posts, but the maximum is **200 posts** at a time.\n\n"
             f"Please reduce your range and try again."
         )
 
@@ -948,7 +948,7 @@ async def global_queue_status_command(client: Client, message: Message):
     status = await download_manager.get_global_status()
     await message.reply(status)
 
-@bot.on_message(filters.private & new_updates_only & ~filters.command(["start", "help", "dl", "stats", "logs", "killall", "bdl", "myinfo", "upgrade", "premiumlist", "getpremium", "verifypremium", "login", "verify", "password", "logout", "cancel", "canceldownload", "queue", "qstatus", "setthumb", "delthumb", "viewthumb", "addadmin", "removeadmin", "setpremium", "removepremium", "ban", "unban", "broadcast", "adminstats", "userinfo", "testdump"]))
+@bot.on_message(filters.private & new_updates_only & ~filters.command(["start", "help", "dl", "stats", "logs", "killall", "bdl", "myinfo", "upgrade", "premiumlist", "watchad", "verifypremium", "login", "verify", "password", "logout", "cancel", "canceldownload", "queue", "qstatus", "setthumb", "delthumb", "viewthumb", "addadmin", "removeadmin", "setpremium", "removepremium", "ban", "unban", "broadcast", "adminstats", "userinfo", "testdump"]))
 @force_subscribe
 @check_download_limit
 async def handle_any_message(bot: Client, message: Message):
@@ -1138,7 +1138,7 @@ async def broadcast_handler(client: Client, message: Message):
 async def admin_stats_handler(client: Client, message: Message):
     await admin_stats_command(client, message, download_mgr=download_manager)
 
-@bot.on_message(filters.command("getpremium") & filters.private)
+@bot.on_message(filters.command("watchad") & filters.private)
 @register_user
 async def get_premium_command(client: Client, message: Message):
     """Generate ad link for temporary premium access"""
@@ -1196,7 +1196,7 @@ async def get_premium_command(client: Client, message: Message):
         )
         
         markup = InlineKeyboardMarkup([
-            [InlineKeyboardButton("🎁 Get 1 FREE Download", url=ad_url)]
+            [InlineKeyboardButton("🎁 Watch ad & Get 5 Download", url=ad_url)]
         ])
         
         sent_msg = await message.reply(premium_text, reply_markup=markup, disable_web_page_preview=True)
@@ -1226,7 +1226,7 @@ async def verify_premium_command(client: Client, message: Message):
             await message.reply(
                 "**Usage:** `/verifypremium <code>`\n\n"
                 "**Example:** `/verifypremium ABC123DEF456`\n\n"
-                "Get your code by using `/getpremium` first!"
+                "Get your code by using `/watchad` first!"
             )
             return
         
@@ -1257,7 +1257,7 @@ async def upgrade_command(client: Client, message: Message):
         "**Premium Features:**\n"
         "✅ Unlimited downloads per day\n"
         "✅ Batch download support (/bdl command)\n"
-        "✅ Download up to 20 posts at once\n"
+        "✅ Download up to 200 posts at once\n"
         "✅ Priority support\n"
         "✅ No daily limits\n\n"
         "━━━━━━━━━━━━━━━━━━━━━━\n\n"
@@ -1265,14 +1265,14 @@ async def upgrade_command(client: Client, message: Message):
         f"📥 **{PREMIUM_DOWNLOADS} Free Downloads**\n"
         "📺 Complete quick verification steps!\n\n"
         "**How it works:**\n"
-        "1️⃣ Use `/getpremium` command\n"
+        "1️⃣ Use `/watchad` command\n"
         "2️⃣ Click the link and complete 3 steps\n"
         "3️⃣ Get verification code\n"
         "4️⃣ Send code back to bot\n"
         f"5️⃣ Enjoy {PREMIUM_DOWNLOADS} free downloads! 🎉\n\n"
         "━━━━━━━━━━━━━━━━━━━━━━\n\n"
         "**💰 Option 2: Monthly Subscription**\n"
-        "💵 **30 Days Premium = $1 USD**\n\n"
+        "💵 **7/15/30 Days Premium = $1/$1.5/$2 USD**\n\n"
         "**How to Subscribe:**\n"
     )
     
@@ -1372,7 +1372,7 @@ async def callback_handler(client: Client, callback_query: CallbackQuery):
         )
         
         markup = InlineKeyboardMarkup([
-            [InlineKeyboardButton("🎁 Get 1 FREE Download", url=ad_url)]
+            [InlineKeyboardButton("🎁 Watch ad & Get 5 Download", url=ad_url)]
         ])
         
         await callback_query.answer()
@@ -1387,7 +1387,7 @@ async def callback_handler(client: Client, callback_query: CallbackQuery):
             "**Premium Features:**\n"
             "✅ Unlimited downloads per day\n"
             "✅ Batch download support (/bdl command)\n"
-            "✅ Download up to 20 posts at once\n"
+            "✅ Download up to 200 posts at once\n"
             "✅ Priority support\n"
             "✅ No daily limits\n\n"
             "━━━━━━━━━━━━━━━━━━━━━━\n\n"
@@ -1395,14 +1395,14 @@ async def callback_handler(client: Client, callback_query: CallbackQuery):
             f"🎁 **Get {PREMIUM_DOWNLOADS} FREE Downloads**\n"
             "📺 Just watch a short ad!\n\n"
             "**How it works:**\n"
-            "1️⃣ Use `/getpremium` command\n"
+            "1️⃣ Use `/watchad` command\n"
             "2️⃣ Complete 3 verification steps\n"
             "3️⃣ Get verification code\n"
             "4️⃣ Send code back to bot\n"
             f"5️⃣ Enjoy {PREMIUM_DOWNLOADS} free downloads! 🎉\n\n"
             "━━━━━━━━━━━━━━━━━━━━━━\n\n"
             "**💰 Option 2: Monthly Subscription**\n"
-            "💵 **30 Days Premium = $1 USD**\n\n"
+            "💵 **7/15/30 Days Premium = $1/$1.5/$2 USD**\n\n"
             "**How to Subscribe:**\n"
         )
         
@@ -1462,7 +1462,7 @@ async def callback_handler(client: Client, callback_query: CallbackQuery):
         )
         
         markup = InlineKeyboardMarkup([
-            [InlineKeyboardButton("🎁 Watch Ad & Get 1 Download", url=ad_url)]
+            [InlineKeyboardButton("🎁 Watch ad & Get 5 Download", url=ad_url)]
         ])
         
         await callback_query.answer()
@@ -1477,7 +1477,7 @@ async def callback_handler(client: Client, callback_query: CallbackQuery):
             "**Premium Features:**\n"
             "✅ Unlimited downloads per day\n"
             "✅ Batch download support (/bdl command)\n"
-            "✅ Download up to 20 posts at once\n"
+            "✅ Download up to 200 posts at once\n"
             "✅ Priority support\n"
             "✅ No daily limits\n\n"
             "━━━━━━━━━━━━━━━━━━━━━━\n\n"
@@ -1485,14 +1485,14 @@ async def callback_handler(client: Client, callback_query: CallbackQuery):
             f"🎁 **Get {PREMIUM_DOWNLOADS} FREE Download**\n"
             "📺 Just watch a short ad!\n\n"
             "**How it works:**\n"
-            "1️⃣ Use `/getpremium` command\n"
+            "1️⃣ Use `/watchad` command\n"
             "2️⃣ Complete 3 verification steps\n"
             "3️⃣ Get verification code\n"
             "4️⃣ Send code back to bot\n"
             f"5️⃣ Enjoy {PREMIUM_DOWNLOADS} free download! 🎉\n\n"
             "━━━━━━━━━━━━━━━━━━━━━━\n\n"
             "**💰 Option 2: Monthly Subscription**\n"
-            "💵 **30 Days Premium = $1 USD**\n\n"
+            "💵 **7/15/30 Days Premium = $1/$1.5/$2 USD**\n\n"
             "**How to Subscribe:**\n"
         )
         
