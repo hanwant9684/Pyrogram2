@@ -38,6 +38,14 @@ class PyroConf:
     TELEGRAM_TON= os.getenv("TELEGRAM_TON", "")
     CRYPTO_ADDRESS = os.getenv("CRYPTO_ADDRESS", "")
     
+    # RichAds Configuration
+    RICHADS_PUBLISHER_ID = os.getenv("RICHADS_PUBLISHER_ID", "")
+    RICHADS_WIDGET_ID = os.getenv("RICHADS_WIDGET_ID", "")
+    try:
+        RICHADS_AD_COOLDOWN = int(os.getenv("RICHADS_AD_COOLDOWN", "300"))  # 5 min between ads
+    except ValueError:
+        RICHADS_AD_COOLDOWN = 300
+    
     # Ad Monetization - Droplink.co
     # API key is stored in .env file (DROPLINK_API_KEY)
     

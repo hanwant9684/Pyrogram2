@@ -1,4 +1,5 @@
 import secrets
+import aiohttp
 from datetime import datetime, timedelta
 
 from logger import LOGGER
@@ -121,4 +122,115 @@ class AdMonetization:
         """Get number of downloads given for watching ads"""
         return PREMIUM_DOWNLOADS
 
+
+class RichAdsMonetization:
+    """RichAds Telegram Bot Message Integration"""
+    
+    def __init__(self):
+        self.api_url = "http://15068.xml.adx1.com/telegram-mb"
+        from config import PyroConf
+        self.publisher_id = getattr(PyroConf, 'RICHADS_PUBLISHER_ID', '')
+        self.widget_id = getattr(PyroConf, 'RICHADS_WIDGET_ID', '')
+        self.cooldown = getattr(PyroConf, 'RICHADS_AD_COOLDOWN', 300)
+        self.user_last_ad = {}  # Track when users last saw an ad
+        LOGGER(__name__).info("RichAds Monetization initialized")
+    
+    def can_show_ad(self, user_id: int) -> bool:
+        """Check if enough time passed since last ad"""
+        if user_id not in self.user_last_ad:
+            return True
+        elapsed = (datetime.now() - self.user_last_ad[user_id]).total_seconds()
+        return elapsed >= self.cooldown
+    
+    def mark_ad_shown(self, user_id: int):
+        """Mark that user just saw an ad"""
+        self.user_last_ad[user_id] = datetime.now()
+    
+    async def get_ad(self, user_id: int, language_code: str = "en", production: bool = True):
+        """Fetch ad from RichAds API"""
+        if not self.publisher_id:
+            return None
+        
+        payload = {
+            "language_code": language_code[:2],
+            "publisher_id": self.publisher_id,
+            "telegram_id": str(user_id),
+            "production": production
+        }
+        
+        if self.widget_id:
+            payload["widget_id"] = self.widget_id
+        
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.post(self.api_url, json=payload, timeout=10) as resp:
+                    if resp.status == 200:
+                        ads = await resp.json()
+                        if ads and len(ads) > 0:
+                            LOGGER(__name__).info(f"RichAds: Got ad for user {user_id}")
+                            return ads[0]
+                    return None
+        except Exception as e:
+            LOGGER(__name__).error(f"RichAds API error: {e}")
+            return None
+    
+    async def report_impression(self, notification_url: str):
+        """Report impression to RichAds"""
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(notification_url, timeout=5) as resp:
+                    pass
+        except:
+            pass
+    
+    async def show_ad(self, client, chat_id: int, user_id: int, lang_code: str = "en"):
+        """
+        Show RichAds ad to user. Returns True if ad was shown.
+        """
+        # Skip if on cooldown
+        if not self.can_show_ad(user_id):
+            return False
+        
+        # Fetch ad
+        ad = await self.get_ad(user_id, lang_code, production=True)
+        if not ad:
+            return False
+        
+        # Report impression
+        if ad.get('notification_url'):
+            await self.report_impression(ad['notification_url'])
+        
+        # Build keyboard with ad link
+        from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+        keyboard = InlineKeyboardMarkup([
+            [InlineKeyboardButton(
+                text=ad.get('button', '🔗 Visit'),
+                url=ad.get('link', '')
+            )]
+        ])
+        
+        try:
+            image_url = ad.get('image_preload') or ad.get('image')
+            caption = f"📢 **{ad.get('title', 'Sponsored')}**\n\n{ad.get('message', '')}"
+            
+            if ad.get('brand'):
+                caption += f"\n\n_Sponsored by {ad.get('brand')}_"
+            
+            await client.send_photo(
+                chat_id=chat_id,
+                photo=image_url,
+                caption=caption,
+                reply_markup=keyboard
+            )
+            
+            self.mark_ad_shown(user_id)
+            LOGGER(__name__).info(f"RichAd shown to user {user_id}")
+            return True
+            
+        except Exception as e:
+            LOGGER(__name__).error(f"Error showing RichAd: {e}")
+            return False
+
+
 ad_monetization = AdMonetization()
+richads = RichAdsMonetization()

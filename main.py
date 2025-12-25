@@ -40,7 +40,7 @@ from logger import LOGGER
 from database_sqlite import db
 from legal_acceptance import show_legal_acceptance, get_terms_preview, get_privacy_preview, get_full_terms, get_full_privacy
 from phone_auth import PhoneAuthHandler
-from ad_monetization import ad_monetization, PREMIUM_DOWNLOADS
+from ad_monetization import ad_monetization, richads, PREMIUM_DOWNLOADS
 from access_control import admin_only, paid_or_admin_only, check_download_limit, register_user, check_user_session, get_user_client, force_subscribe
 from admin_commands import (
     add_admin_command,
@@ -224,6 +224,12 @@ async def start(_, message: Message):
     except Exception as e:
         LOGGER(__name__).warning(f"Could not send video in start command: {e}")
         await message.reply(welcome_text, reply_markup=markup, disable_web_page_preview=True)
+    
+    # After sending welcome message, show RichAds to free users
+    user_type = db.get_user_type(user_id)
+    if user_type not in ['paid', 'premium', 'admin'] and not db.is_admin(user_id):
+        lang_code = message.from_user.language_code or "en"
+        await richads.show_ad(bot, message.chat.id, user_id, lang_code)
 
 @bot.on_message(filters.command("help") & filters.private)
 @register_user
@@ -981,6 +987,13 @@ async def handle_any_message(bot: Client, message: Message):
         
         # Check if user has personal session
         user_client, _ = await get_user_client(message.from_user.id)
+        
+        # Before starting download, show ad to free users (with cooldown)
+        user_id = message.from_user.id
+        user_type = db.get_user_type(user_id)
+        if user_type not in ['paid', 'premium', 'admin'] and not db.is_admin(user_id):
+            lang_code = message.from_user.language_code or "en"
+            await richads.show_ad(bot, message.chat.id, user_id, lang_code)
         
         # Add to download queue
         download_coro = handle_download(bot, message, message.text, user_client, True)

@@ -11,14 +11,9 @@ uvloop
 flask
 waitress
 
-# Performance
+# Performance & Async
 orjson
-cryptg
-flask
-orjson
-psutil
+aiohttp
+
+# Telegram client
 pyrogram
-pyrotgfork
-tgcrypto
-uvloop
-waitress
