@@ -117,7 +117,7 @@ def load_template(code, title, message, bot_username):
         <p style="margin-bottom: 15px;">{escape(message)}</p>
         <ol>
             <li>Go back to the Telegram bot</li>
-            <li>Use <code>/watchad</code> to get a new ad link</li>
+            <li>Use <code>/getpremium</code> to get a new ad link</li>
             <li>Complete the ad verification</li>
             <li>You'll receive a valid code</li>
         </ol>
@@ -328,7 +328,7 @@ def application(environ, start_response):
             LOGGER(__name__).info(f"Received /verify-ad request with session: {session_id[:16] if session_id else 'empty'}... | confirm={confirm}")
             
             if not session_id:
-                html = load_template('', 'Invalid Request', 'No session ID provided. Please use the link from /watchad command.', PyroConf.BOT_USERNAME or '')
+                html = load_template('', 'Invalid Request', 'No session ID provided. Please use the link from /getpremium command.', PyroConf.BOT_USERNAME or '')
             elif confirm != '1':
                 # Show landing page - prevents shortener services from triggering code generation
                 LOGGER(__name__).info(f"Showing landing page for session {session_id[:16]}... (no confirm parameter)")
@@ -609,7 +609,7 @@ def application(environ, start_response):
             <h2 style="color: #2d3748; margin-bottom: 20px;">SQL Query Editor</h2>
             <p style="color: #718096; margin-bottom: 15px;">⚠️ <strong>Warning:</strong> Be careful with UPDATE, INSERT, and DELETE queries. All queries are executed directly on the live database.</p>
             
-            <textarea id="queryBox" class="query-box" placeholder="Enter SQL query here...&#10;&#10;Examples:&#10;SELECT * FROM users WHERE user_id=&#10;UPDATE users SET premium=1 WHERE user_id=123456;&#10;INSERT INTO users (user_id, username) VALUES (123, 'testuser');"></textarea>
+            <textarea id="queryBox" class="query-box" placeholder="Enter SQL query here...&#10;&#10;Examples:&#10;SELECT * FROM users LIMIT 10;&#10;UPDATE users SET premium=1 WHERE user_id=123456;&#10;INSERT INTO users (user_id, username) VALUES (123, 'testuser');"></textarea>
             
             <div class="btn-group">
                 <button class="btn-sm btn-primary" onclick="executeQuery()">▶️ Run Query</button>
@@ -656,7 +656,7 @@ def application(environ, start_response):
         function loadTemplate(type) {{
             const queryBox = document.getElementById('queryBox');
             if (type === 'select') {{
-                queryBox.value = 'SELECT * FROM users WHERE user_id=';
+                queryBox.value = 'SELECT * FROM users LIMIT 10;';
             }} else if (type === 'update') {{
                 queryBox.value = 'UPDATE users SET premium=1 WHERE user_id=123456;';
             }} else if (type === 'insert') {{

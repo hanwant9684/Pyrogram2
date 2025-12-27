@@ -40,7 +40,7 @@ from logger import LOGGER
 from database_sqlite import db
 from legal_acceptance import show_legal_acceptance, get_terms_preview, get_privacy_preview, get_full_terms, get_full_privacy
 from phone_auth import PhoneAuthHandler
-from ad_monetization import ad_monetization, richads, PREMIUM_DOWNLOADS
+from ad_monetization import ad_monetization, PREMIUM_DOWNLOADS
 from access_control import admin_only, paid_or_admin_only, check_download_limit, register_user, check_user_session, get_user_client, force_subscribe
 from admin_commands import (
     add_admin_command,
@@ -60,12 +60,9 @@ IS_RENDER = bool(os.getenv('RENDER') or os.getenv('RENDER_EXTERNAL_URL'))
 IS_REPLIT = bool(os.getenv('REPLIT_DEPLOYMENT') or os.getenv('REPL_ID'))
 IS_CONSTRAINED = IS_RENDER or IS_REPLIT  # Low RAM environments
 
-# Balance speed vs memory for constrained environments
-# Replit: Moderate increase to improve speed without excessive RAM usage
-# Max concurrent downloads is 1 per user (queue_manager.py line 88), max 10 users total
-# So real concurrency is 1-10 downloads, not the full 4 concurrent_transmissions
-workers = 2 if IS_CONSTRAINED else 8  # Balanced worker threads for message processing
-concurrent = 4 if IS_CONSTRAINED else 8  # 4 concurrent transmissions per session (safe for 512MB)
+# Aggressively reduce workers for constrained environments
+workers = 1 if IS_CONSTRAINED else 4
+concurrent = 2 if IS_CONSTRAINED else 4
 
 bot = Client(
     "media_bot",
@@ -75,7 +72,7 @@ bot = Client(
     workers=workers,
     max_concurrent_transmissions=concurrent,
     parse_mode=ParseMode.MARKDOWN,
-    sleep_threshold=10,  # Reduced from 30 for faster API requests
+    sleep_threshold=30,  # Reduce API call frequency
     in_memory=True  # Don't write session files to disk
 )
 
@@ -188,9 +185,9 @@ async def start(_, message: Message):
         "   📥 1 free download per ad session\n"
         "   📺 Complete quick verification steps\n"
         "   ♻️ Repeat anytime!\n"
-        "   👉 Use: `/watchad`\n\n"
-        "💰 **Option 2: Paid ($2/month)**\n"
-        "   ⭐ 7/15/30 days unlimited access\n"
+        "   👉 Use: `/getpremium`\n\n"
+        "💰 **Option 2: Paid ($1/month)**\n"
+        "   ⭐ 30 days unlimited access\n"
         "   🚀 Priority downloads\n"
         "   📦 Batch download support\n"
         "   👉 Use: `/upgrade`\n\n"
@@ -224,12 +221,6 @@ async def start(_, message: Message):
     except Exception as e:
         LOGGER(__name__).warning(f"Could not send video in start command: {e}")
         await message.reply(welcome_text, reply_markup=markup, disable_web_page_preview=True)
-    
-    # After sending welcome message, show RichAds to free users
-    user_type = db.get_user_type(user_id)
-    if user_type not in ['paid', 'premium', 'admin'] and not db.is_admin(user_id):
-        lang_code = message.from_user.language_code or "en"
-        await richads.show_ad(bot, message.chat.id, user_id, lang_code)
 
 @bot.on_message(filters.command("help") & filters.private)
 @register_user
@@ -248,8 +239,8 @@ async def help_command(_, message: Message):
             "   📺 Videos • 🖼️ Photos • 🎵 Audio • 📄 Documents\n\n"
             "**Batch Download:**\n"
             "   `/bdl <start_link> <end_link>`\n"
-            "   💡 Example: `/bdl https://t.me/channel/100 https://t.me/channel/300`\n"
-            "   📦 Downloads all posts from 100 to 300 (max 200)\n\n"
+            "   💡 Example: `/bdl https://t.me/channel/100 https://t.me/channel/120`\n"
+            "   📦 Downloads all posts from 100 to 120 (max 20)\n\n"
             "━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
             "🚀 **Queue System:**\n\n"
             "   👑 **Premium Priority** - Jump ahead in queue!\n"
@@ -269,7 +260,7 @@ async def help_command(_, message: Message):
             "💡 **Your Benefits:**\n"
             "   ✅ Unlimited downloads\n"
             "   ✅ Priority queue access\n"
-            "   ✅ Batch download (up to 200 posts)\n"
+            "   ✅ Batch download (up to 20 posts)\n"
             "   ✅ No daily limits"
         )
     else:
@@ -287,12 +278,12 @@ async def help_command(_, message: Message):
             "━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
             "💎 **Get More Downloads:**\n\n"
             "🎁 **FREE Downloads (Watch Ads):**\n"
-            "   `/watchad` - Watch ad & Get 5 Download\n"
+            "   `/getpremium` - Get 1 free download\n"
             "   📺 Complete verification steps\n"
             "   ♻️ Repeat anytime!\n\n"
-            "💰 **Paid Premium ($2/month):**\n"
+            "💰 **Paid Premium ($1/month):**\n"
             "   `/upgrade` - View payment options\n"
-            "   ⭐ 7/15/30 days unlimited access\n"
+            "   ⭐ 30 days unlimited access\n"
             "   🚀 Priority downloads\n"
             "   📦 Batch download support\n\n"
             "━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
@@ -440,7 +431,7 @@ async def handle_download(bot: Client, message: Message, post_url: str, user_cli
                 if user_type == 'free':
                     from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
                     upgrade_keyboard = InlineKeyboardMarkup([
-                        [InlineKeyboardButton("🎁 Watch ad & Get 5 Download", callback_data="watch_ad_now")],
+                        [InlineKeyboardButton("🎁 Watch Ad & Get 1 Download", callback_data="watch_ad_now")],
                         [InlineKeyboardButton("💰 Upgrade to Premium", callback_data="upgrade_premium")]
                     ])
                     
@@ -465,47 +456,47 @@ async def handle_download(bot: Client, message: Message, post_url: str, user_cli
             # CRITICAL FIX: Use client_to_use for download (user's client for private channels)
             # Create sync progress callback with throttling to avoid RAM overhead
             last_update = {"time": time(), "percent": 0}
-            def create_download_progress_callback():
-                def download_progress(current, total):
-                    try:
-                        if total > 0 and progress_message:
-                            now = time()
-                            percent = int((current / total) * 100)
-                            elapsed = now - start_time
+            def download_progress_callback(current, total):
+                """Sync callback with throttling - update max every 2 seconds or 5% change"""
+                try:
+                    if total > 0:
+                        now = time()
+                        percent = int((current / total) * 100)
+                        elapsed = now - start_time
+                        
+                        # Throttle updates: only update if 5+ seconds passed OR 10% progress changed OR completion
+                        should_update = (
+                            (now - last_update["time"] >= 5) or  # 5 seconds minimum between updates
+                            (percent - last_update["percent"] >= 10) or  # 10% progress change
+                            (percent == 100)  # Always show completion
+                        )
+                        
+                        if should_update and elapsed > 0:
+                            last_update["time"] = now
+                            last_update["percent"] = percent
                             
-                            # Throttle updates: only update if 5+ seconds passed OR 10% progress changed OR completion
-                            should_update = (
-                                (now - last_update["time"] >= 5) or  # 5 seconds minimum between updates
-                                (percent - last_update["percent"] >= 10) or  # 10% progress change
-                                (percent == 100)  # Always show completion
-                            )
+                            speed_mbps = (current / elapsed) / 1024 / 1024
+                            remaining_time = (total - current) / (current / elapsed) if current > 0 else 0
+                            eta_str = f"{int(remaining_time)}s" if remaining_time < 60 else f"{int(remaining_time / 60)}m"
                             
-                            if should_update and elapsed > 0:
-                                last_update["time"] = now
-                                last_update["percent"] = percent
-                                
-                                speed_mbps = (current / elapsed) / 1024 / 1024
-                                remaining_time = (total - current) / (current / elapsed) if current > 0 else 0
-                                eta_str = f"{int(remaining_time)}s" if remaining_time < 60 else f"{int(remaining_time / 60)}m"
-                                
-                                try:
-                                    import asyncio
-                                    asyncio.create_task(progress_message.edit_text(
-                                        f"**📥 Downloading: {percent}%**\n"
-                                        f"Speed: {speed_mbps:.1f} MB/s\n"
-                                        f"ETA: {eta_str}"
-                                    ))
-                                except:
-                                    pass
-                    except:
-                        pass
-                return download_progress
+                            # Update message (non-blocking, safe for RAM)
+                            try:
+                                import asyncio
+                                asyncio.create_task(progress_message.edit_text(
+                                    f"**📥 Downloading: {percent}%**\n"
+                                    f"Speed: {speed_mbps:.1f} MB/s\n"
+                                    f"ETA: {eta_str}"
+                                ))
+                            except:
+                                pass
+                except:
+                    pass
             
             media_path = await download_media_fast(
                 client=client_to_use,
                 message=chat_message,
                 file=download_path,
-                progress_callback=create_download_progress_callback()
+                progress_callback=download_progress_callback
             )
             LOGGER(__name__).info(f"Downloaded media: {media_path}")
 
@@ -550,7 +541,7 @@ async def handle_download(bot: Client, message: Message, post_url: str, user_cli
                     if user_type == 'free':
                         from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
                         upgrade_markup = InlineKeyboardMarkup([
-                            [InlineKeyboardButton("🎁 Watch ad & Get 5 Download", callback_data="watch_ad_now")],
+                            [InlineKeyboardButton("🎁 Watch Ad & Get 1 Download", callback_data="watch_ad_now")],
                             [InlineKeyboardButton("💰 Upgrade to Premium", callback_data="upgrade_premium")]
                         ])
                         await message.reply(
@@ -582,7 +573,7 @@ async def handle_download(bot: Client, message: Message, post_url: str, user_cli
                 if user_type == 'free':
                     from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
                     upgrade_keyboard = InlineKeyboardMarkup([
-                        [InlineKeyboardButton("🎁 Watch ad & Get 5 Download", callback_data="watch_ad_now")],
+                        [InlineKeyboardButton("🎁 Watch Ad & Get 1 Download", callback_data="watch_ad_now")],
                         [InlineKeyboardButton("💰 Upgrade to Premium", callback_data="upgrade_premium")]
                     ])
                     await message.reply(
@@ -663,7 +654,7 @@ async def download_range(bot: Client, message: Message):
             "🚀 **Batch Download Process**\n"
             "`/bdl start_link end_link`\n\n"
             "💡 **Example:**\n"
-            "`/bdl https://t.me/mychannel/100 https://t.me/mychannel/300`"
+            "`/bdl https://t.me/mychannel/100 https://t.me/mychannel/120`"
         )
         return
 
@@ -689,12 +680,12 @@ async def download_range(bot: Client, message: Message):
     if start_id > end_id:
         return await message.reply("**❌ Invalid range: start ID cannot exceed end ID.**")
     
-    # Limit batch to 200 posts at a time
+    # Limit batch to 20 posts at a time
     batch_count = end_id - start_id + 1
-    if batch_count > 200:
+    if batch_count > 20:
         return await message.reply(
             f"**❌ Batch limit exceeded!**\n\n"
-            f"You requested `{batch_count}` posts, but the maximum is **200 posts** at a time.\n\n"
+            f"You requested `{batch_count}` posts, but the maximum is **20 posts** at a time.\n\n"
             f"Please reduce your range and try again."
         )
 
@@ -951,7 +942,7 @@ async def global_queue_status_command(client: Client, message: Message):
     status = await download_manager.get_global_status()
     await message.reply(status)
 
-@bot.on_message(filters.private & new_updates_only & ~filters.command(["start", "help", "dl", "stats", "logs", "killall", "bdl", "myinfo", "upgrade", "premiumlist", "watchad", "verifypremium", "login", "verify", "password", "logout", "cancel", "canceldownload", "queue", "qstatus", "setthumb", "delthumb", "viewthumb", "addadmin", "removeadmin", "setpremium", "removepremium", "ban", "unban", "broadcast", "adminstats", "userinfo", "testdump"]))
+@bot.on_message(filters.private & new_updates_only & ~filters.command(["start", "help", "dl", "stats", "logs", "killall", "bdl", "myinfo", "upgrade", "premiumlist", "getpremium", "verifypremium", "login", "verify", "password", "logout", "cancel", "canceldownload", "queue", "qstatus", "setthumb", "delthumb", "viewthumb", "addadmin", "removeadmin", "setpremium", "removepremium", "ban", "unban", "broadcast", "adminstats", "userinfo", "testdump"]))
 @force_subscribe
 @check_download_limit
 async def handle_any_message(bot: Client, message: Message):
@@ -987,13 +978,6 @@ async def handle_any_message(bot: Client, message: Message):
         
         # Check if user has personal session
         user_client, _ = await get_user_client(message.from_user.id)
-        
-        # Before starting download, show ad to free users (with cooldown)
-        user_id = message.from_user.id
-        user_type = db.get_user_type(user_id)
-        if user_type not in ['paid', 'premium', 'admin'] and not db.is_admin(user_id):
-            lang_code = message.from_user.language_code or "en"
-            await richads.show_ad(bot, message.chat.id, user_id, lang_code)
         
         # Add to download queue
         download_coro = handle_download(bot, message, message.text, user_client, True)
@@ -1148,7 +1132,7 @@ async def broadcast_handler(client: Client, message: Message):
 async def admin_stats_handler(client: Client, message: Message):
     await admin_stats_command(client, message, download_mgr=download_manager)
 
-@bot.on_message(filters.command("watchad") & filters.private)
+@bot.on_message(filters.command("getpremium") & filters.private)
 @register_user
 async def get_premium_command(client: Client, message: Message):
     """Generate ad link for temporary premium access"""
@@ -1192,12 +1176,6 @@ async def get_premium_command(client: Client, message: Message):
         
         bot_domain = PyroConf.get_app_url()
         
-        # Check if user can view ad URL today (max 2 per day)
-        can_show, error_msg = ad_monetization.can_show_ad_link(message.from_user.id)
-        if not can_show:
-            await message.reply(error_msg)
-            return
-        
         verification_code, ad_url = ad_monetization.generate_ad_link(message.from_user.id, bot_domain)
         
         premium_text = (
@@ -1212,7 +1190,7 @@ async def get_premium_command(client: Client, message: Message):
         )
         
         markup = InlineKeyboardMarkup([
-            [InlineKeyboardButton("🎁 Watch ad & Get 5 Download", url=ad_url)]
+            [InlineKeyboardButton("🎁 Get 1 FREE Download", url=ad_url)]
         ])
         
         sent_msg = await message.reply(premium_text, reply_markup=markup, disable_web_page_preview=True)
@@ -1242,13 +1220,13 @@ async def verify_premium_command(client: Client, message: Message):
             await message.reply(
                 "**Usage:** `/verifypremium <code>`\n\n"
                 "**Example:** `/verifypremium ABC123DEF456`\n\n"
-                "Get your code by using `/watchad` first!"
+                "Get your code by using `/getpremium` first!"
             )
             return
         
         verification_code = message.command[1].strip()
         
-        success, msg = ad_monetization.verify_code(verification_code, message.from_user.id)
+        success, msg = ad_monetization.verify_and_grant_downloads(message.from_user.id, verification_code)
         
         if success:
             await message.reply(
@@ -1273,7 +1251,7 @@ async def upgrade_command(client: Client, message: Message):
         "**Premium Features:**\n"
         "✅ Unlimited downloads per day\n"
         "✅ Batch download support (/bdl command)\n"
-        "✅ Download up to 200 posts at once\n"
+        "✅ Download up to 20 posts at once\n"
         "✅ Priority support\n"
         "✅ No daily limits\n\n"
         "━━━━━━━━━━━━━━━━━━━━━━\n\n"
@@ -1281,14 +1259,14 @@ async def upgrade_command(client: Client, message: Message):
         f"📥 **{PREMIUM_DOWNLOADS} Free Downloads**\n"
         "📺 Complete quick verification steps!\n\n"
         "**How it works:**\n"
-        "1️⃣ Use `/watchad` command\n"
+        "1️⃣ Use `/getpremium` command\n"
         "2️⃣ Click the link and complete 3 steps\n"
         "3️⃣ Get verification code\n"
         "4️⃣ Send code back to bot\n"
         f"5️⃣ Enjoy {PREMIUM_DOWNLOADS} free downloads! 🎉\n\n"
         "━━━━━━━━━━━━━━━━━━━━━━\n\n"
         "**💰 Option 2: Monthly Subscription**\n"
-        "💵 **7/15/30 Days Premium = $1/$1.5/$2 USD**\n\n"
+        "💵 **30 Days Premium = $1 USD**\n\n"
         "**How to Subscribe:**\n"
     )
     
@@ -1373,12 +1351,6 @@ async def callback_handler(client: Client, callback_query: CallbackQuery):
             await callback_query.answer("You already have premium subscription!", show_alert=True)
             return
         
-        # Check if user can view ad URL today (max 2 per day)
-        can_show, error_msg = ad_monetization.can_show_ad_link(user_id)
-        if not can_show:
-            await callback_query.answer(error_msg, show_alert=True)
-            return
-        
         bot_domain = PyroConf.get_app_url()
         verification_code, ad_url = ad_monetization.generate_ad_link(user_id, bot_domain)
         
@@ -1394,7 +1366,7 @@ async def callback_handler(client: Client, callback_query: CallbackQuery):
         )
         
         markup = InlineKeyboardMarkup([
-            [InlineKeyboardButton("🎁 Watch ad & Get 5 Download", url=ad_url)]
+            [InlineKeyboardButton("🎁 Get 1 FREE Download", url=ad_url)]
         ])
         
         await callback_query.answer()
@@ -1409,7 +1381,7 @@ async def callback_handler(client: Client, callback_query: CallbackQuery):
             "**Premium Features:**\n"
             "✅ Unlimited downloads per day\n"
             "✅ Batch download support (/bdl command)\n"
-            "✅ Download up to 200 posts at once\n"
+            "✅ Download up to 20 posts at once\n"
             "✅ Priority support\n"
             "✅ No daily limits\n\n"
             "━━━━━━━━━━━━━━━━━━━━━━\n\n"
@@ -1417,14 +1389,14 @@ async def callback_handler(client: Client, callback_query: CallbackQuery):
             f"🎁 **Get {PREMIUM_DOWNLOADS} FREE Downloads**\n"
             "📺 Just watch a short ad!\n\n"
             "**How it works:**\n"
-            "1️⃣ Use `/watchad` command\n"
+            "1️⃣ Use `/getpremium` command\n"
             "2️⃣ Complete 3 verification steps\n"
             "3️⃣ Get verification code\n"
             "4️⃣ Send code back to bot\n"
             f"5️⃣ Enjoy {PREMIUM_DOWNLOADS} free downloads! 🎉\n\n"
             "━━━━━━━━━━━━━━━━━━━━━━\n\n"
             "**💰 Option 2: Monthly Subscription**\n"
-            "💵 **7/15/30 Days Premium = $1/$1.5/$2 USD**\n\n"
+            "💵 **30 Days Premium = $1 USD**\n\n"
             "**How to Subscribe:**\n"
         )
         
@@ -1469,12 +1441,6 @@ async def callback_handler(client: Client, callback_query: CallbackQuery):
             await callback_query.answer("You already have premium subscription!", show_alert=True)
             return
         
-        # Check if user can view ad URL today (max 2 per day)
-        can_show, error_msg = ad_monetization.can_show_ad_link(user_id)
-        if not can_show:
-            await callback_query.answer(error_msg, show_alert=True)
-            return
-        
         bot_domain = PyroConf.get_app_url()
         verification_code, ad_url = ad_monetization.generate_ad_link(user_id, bot_domain)
         
@@ -1490,7 +1456,7 @@ async def callback_handler(client: Client, callback_query: CallbackQuery):
         )
         
         markup = InlineKeyboardMarkup([
-            [InlineKeyboardButton("🎁 Watch ad & Get 5 Download", url=ad_url)]
+            [InlineKeyboardButton("🎁 Watch Ad & Get 1 Download", url=ad_url)]
         ])
         
         await callback_query.answer()
@@ -1505,7 +1471,7 @@ async def callback_handler(client: Client, callback_query: CallbackQuery):
             "**Premium Features:**\n"
             "✅ Unlimited downloads per day\n"
             "✅ Batch download support (/bdl command)\n"
-            "✅ Download up to 200 posts at once\n"
+            "✅ Download up to 20 posts at once\n"
             "✅ Priority support\n"
             "✅ No daily limits\n\n"
             "━━━━━━━━━━━━━━━━━━━━━━\n\n"
@@ -1513,14 +1479,14 @@ async def callback_handler(client: Client, callback_query: CallbackQuery):
             f"🎁 **Get {PREMIUM_DOWNLOADS} FREE Download**\n"
             "📺 Just watch a short ad!\n\n"
             "**How it works:**\n"
-            "1️⃣ Use `/watchad` command\n"
+            "1️⃣ Use `/getpremium` command\n"
             "2️⃣ Complete 3 verification steps\n"
             "3️⃣ Get verification code\n"
             "4️⃣ Send code back to bot\n"
             f"5️⃣ Enjoy {PREMIUM_DOWNLOADS} free download! 🎉\n\n"
             "━━━━━━━━━━━━━━━━━━━━━━\n\n"
             "**💰 Option 2: Monthly Subscription**\n"
-            "💵 **7/15/30 Days Premium = $1/$1.5/$2 USD**\n\n"
+            "💵 **30 Days Premium = $1 USD**\n\n"
             "**How to Subscribe:**\n"
         )
         

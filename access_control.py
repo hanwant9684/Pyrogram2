@@ -79,7 +79,7 @@ def paid_or_admin_only(func):
                 message.chat.id,
                 "❌ **This feature is available for premium users only.**\n\n"
                 "💎 **Get Premium Access:**\n\n"
-                "🎁 **FREE Option:** Use `/watchad` - Watch a quick ad!\n"
+                "🎁 **FREE Option:** Use `/getpremium` - Watch a quick ad!\n"
                 "💰 **Paid Option:** Use `/upgrade` - Only $1/month\n\n"
                 "✅ **Premium Benefits:**\n"
                 "• Unlimited downloads\n"

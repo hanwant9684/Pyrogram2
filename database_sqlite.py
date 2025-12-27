@@ -102,16 +102,6 @@ class DatabaseManager:
             ''')
             
             cursor.execute('''
-                CREATE TABLE IF NOT EXISTS ad_url_views (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    user_id INTEGER NOT NULL,
-                    date TEXT NOT NULL,
-                    views INTEGER DEFAULT 0,
-                    UNIQUE(user_id, date)
-                )
-            ''')
-            
-            cursor.execute('''
                 CREATE TABLE IF NOT EXISTS legal_acceptance (
                     user_id INTEGER PRIMARY KEY,
                     accepted_terms INTEGER DEFAULT 0,
@@ -125,7 +115,6 @@ class DatabaseManager:
             cursor.execute('CREATE INDEX IF NOT EXISTS idx_daily_usage_user_date ON daily_usage(user_id, date)')
             cursor.execute('CREATE INDEX IF NOT EXISTS idx_ad_sessions_created ON ad_sessions(created_at)')
             cursor.execute('CREATE INDEX IF NOT EXISTS idx_ad_verifications_created ON ad_verifications(created_at)')
-            cursor.execute('CREATE INDEX IF NOT EXISTS idx_ad_url_views ON ad_url_views(user_id, date)')
             cursor.execute('CREATE INDEX IF NOT EXISTS idx_legal_acceptance_date ON legal_acceptance(acceptance_date)')
             
             conn.commit()
@@ -818,51 +807,6 @@ class DatabaseManager:
             return user.get('ad_downloads', 0) if user else 0
         except Exception as e:
             LOGGER(__name__).error(f"Error getting ad downloads for {user_id}: {e}")
-            return 0
-    
-    def increment_ad_url_views(self, user_id: int) -> int:
-        """Increment ad URL views for today and return new count"""
-        try:
-            today = datetime.now().strftime('%Y-%m-%d')
-            with self.lock:
-                conn = self._get_connection()
-                cursor = conn.cursor()
-                cursor.execute(
-                    'INSERT OR IGNORE INTO ad_url_views (user_id, date, views) VALUES (?, ?, 0)',
-                    (user_id, today)
-                )
-                cursor.execute(
-                    'UPDATE ad_url_views SET views = views + 1 WHERE user_id = ? AND date = ?',
-                    (user_id, today)
-                )
-                cursor.execute(
-                    'SELECT views FROM ad_url_views WHERE user_id = ? AND date = ?',
-                    (user_id, today)
-                )
-                result = cursor.fetchone()
-                views = result['views'] if result else 0
-                conn.commit()
-                conn.close()
-            return views
-        except Exception as e:
-            LOGGER(__name__).error(f"Error incrementing ad URL views for {user_id}: {e}")
-            return 0
-    
-    def get_daily_ad_url_views(self, user_id: int) -> int:
-        """Get how many ad URLs user has viewed today (max 2 per day)"""
-        try:
-            today = datetime.now().strftime('%Y-%m-%d')
-            conn = self._get_connection()
-            cursor = conn.cursor()
-            cursor.execute(
-                'SELECT views FROM ad_url_views WHERE user_id = ? AND date = ?',
-                (user_id, today)
-            )
-            result = cursor.fetchone()
-            conn.close()
-            return result['views'] if result else 0
-        except Exception as e:
-            LOGGER(__name__).error(f"Error getting ad URL views for {user_id}: {e}")
             return 0
 
     def get_free_downloads_remaining(self, user_id: int) -> dict:

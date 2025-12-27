@@ -412,7 +412,7 @@ async def user_info_command(client, message):
                 f"**Remaining:** `{remaining}`\n"
                 f"**Ad Downloads:** `{ad_downloads}`\n\n"
                 "💎 **Upgrade to Premium for unlimited downloads!**\n"
-                "🎁 **Or use** `/watchad` **to watch ads and get more downloads!**"
+                "🎁 **Or use** `/getpremium` **to watch ads and get more downloads!**"
             )
         elif user_type == 'paid':
             user = db.get_user(user_id)
